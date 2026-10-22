@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-10-22T10:03:55.631534+00:00",
-  "updated_date": "20261013-20261022",
+  "generated_at": "2026-10-22T21:50:40.545475+00:00",
+  "updated_date": "20261022",
   "carryover_days": 9,
   "tag_states": {
     "hf": {
-      "updated_date": "20261013-20261022",
+      "updated_date": "20261022",
       "carryover_days": 9,
       "items": []
     }
