@@ -1,0 +1,25 @@
+{
+  "date": "20261013-20261022",
+  "date_label": "2026-10-13 ~ 2026-10-22",
+  "generated_at": "2026-10-22 10:04:26 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.24060v1",
+      "route": "20261013-20261022/2610.24060v1-generative-text-modelling-and-language-guided-visual-attention-for-deciphering-palimpsests",
+      "title": "Generative Text Modelling and Language-Guided Visual Attention for Deciphering Palimpsests",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "重写本底层文本复原并接入注意力手写文本识别网络",
+      "first_seen_at": "2026-10-22 10:04:26 UTC",
+      "updated_at": "2026-10-22 10:04:26 UTC"
+    }
+  ]
+}

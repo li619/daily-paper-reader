@@ -1,0 +1,1653 @@
+Generative Text Modeling and Language-Guided Visual Attention for
+Deciphering Palimpsests
+Robin Hollifeldt†, Tianru Zhang†, Jessica Ström† and Ekta Vats†
+†Uppsala University
+Uppsala, Sweden
+robin.hollifeldt@it.uu.se, tianru.zhang@it.uu.se,
+jessica195.js@gmail.com, ekta.vats@it.uu.se
+Abstract
+Recovering obscured text in palimpsests,
+i.e.
+the manuscripts where the original
+writing (under-text) was erased and over-
+written for reuse, is vital for preserving
+lost information.
+Due to the nature of
+the material, such a task can be highly
+challenging and time-consuming. This pa-
+per presents an approach towards auto-
+mated palimpsest handwritten text model-
+ing for under-text recovery.
+We investi-
+gate generative models, including Genera-
+tive Adversarial Networks (GANs) and dif-
+fusion models, and design a custom de-
+noising diffusion model that learns struc-
+tured noise patterns to reconstruct the under-
+text.
+The recovered text is subsequently
+processed by a fine-tuned, attention-based
+handwritten text recognition network. Fur-
+thermore, we investigate a language-guided
+recognition framework that leverages tex-
+tual class descriptions as informative pri-
+ors, enabling the text recognition model to
+distinguish meaningful features from noise.
+This is achieved by grounding task-specific
+descriptions,
+phrased in words or sen-
+tences, through visual attention maps gen-
+erated by pretrained vision-language mod-
+els like CLIP (Contrastive Language-Image
+Pre-training). To facilitate future research
+and benchmarking, we release new datasets
+for synthetic palimpsests (currently scarce),
+CLIP-compatible text descriptions, and pre-
+trained models with code.
+1
+Introduction
+Palimpsests are historical manuscripts that contain
+a visible top layer of text and one or more hid-
+den, erased layers beneath it. The original writings
+were scraped-off or overwritten to reuse the writ-
+ing material (parchment). Restoring palimpsests
+and recovering the underlying handwriting is fun-
+damentally an inverse problem, one that aims to
+reverse the processes of erasure and overwriting
+to reveal the lost text.
+While multispectral and hyperspectral imaging
+can enhance contrast between inks and parchment,
+other factors such as spectral overlap, surface ir-
+regularities, and noise often obscure the faint sig-
+nals of the under-text. Because these limitations
+constrain the effectiveness of imaging-based tech-
+niques, they have prompted exploration of data-
+driven approaches, such as deep learning. How-
+ever, emerging deep learning approaches face their
+own limitations, due to the scarcity of annotated
+training data, poor generalisation across different
+manuscripts, and the risk of generating misleading
+reconstructions.
+The field remains significantly
+under-explored, and to the best of our knowledge,
+no existing method can reliably separate over-text
+from under-text across diverse manuscripts and
+perform accurate recognition. This gap highlights
+the need for standardised, reproducible workflows
+for manuscript restoration.
+Recent advances in handwritten text recognition
+(HTR) have leveraged natural language processing
+(NLP) techniques to improve recognition accuracy
+(Li et al., 2025; Chen and Ströbel, 2024). Lan-
+guage models, textual priors, and semantic embed-
+dings provide contextual information that helps
+disambiguate visually uncertain predictions, while
+vision-language frameworks enable grounding of
+textual descriptions in visual features. Integrating
+NLP with HTR transforms it into a multimodal
+problem, allowing models to distinguish relevant
+text from noise and better handle challenging sce-
+narios such as palimpsests.
+Our work builds on this line of research and ex-
+amines the extent to which natural language guid-
+ance can improve the reconstruction and recog-
+nition of under-text in palimpsests using a deep
+learning framework. Our key contributions:
+a) We examine how generative models, including
+Generative Adversarial Networks (GANs) and
+arXiv:2610.24060v1  [cs.CV]  16 Oct 2026
+
+
+diffusion models, can enhance under-text ex-
+traction, and introduce a custom denoising dif-
+fusion model (cDDM) tailored to this problem.
+b) We introduce a language-guided, attention-
+based recognition framework that leverages
+textual priors to guide HTR.
+c) We
+explore
+a
+new
+distillation
+paradigm
+that transfers knowledge via guided attention
+and integrates CLIP-based vision-language
+grounding to align semantic text descriptions
+with visual features, enabling the model to dis-
+tinguish handwriting from noise.
+d) The proposed approach is model-agnostic and
+broadly transferable to any HTR framework
+that exposes intermediate activation maps and
+utilises a standard classification loss.
+e) To address the scarcity of training data, we cre-
+ate and release synthetic palimpsest datasets,
+CLIP-compatible text descriptions, and pre-
+trained models, providing resources for future
+research and benchmarking.
+The source code for our implementation is
+publicly available at https://github.com/
+UU-VLL/GTM-LGHTR-Palimpsest.
+The
+dataset is available at https://doi.org/10.
+5281/zenodo.21902987.
+2
+Related Work
+When it comes to palimpsest restoration, tradi-
+tional approaches, such as colour space transfor-
+mation (Tonazzini, 2010), and statistical methods,
+such as Principal Component Analysis and In-
+dependent Component Analysis on multi-spectral
+imaging (Salerno et al., 2007; Easton et al., 2011),
+have long been the leading techniques for text
+extraction and layer separation.
+Recently, deep
+learning models, including Convolutional Neural
+Networks (Perino et al., 2023), generative inpaint-
+ing (Jampour et al., 2024), latent diffusion mod-
+els (Jampour, 2025), and the increasingly pop-
+ular GANs (Starynska et al., 2021; Madi et al.,
+2023), have begun to play a more important role
+in this field. In particular, Madi et al. (2023) com-
+pared several GAN models and showed that their
+proposed models, Palimpsest Manuscripts Recon-
+struction (PMR)-GAN, and Pix2pix (also a GAN
+model), are among the top-performing approaches
+in restoration.
+Given the difficulty of obtain-
+ing ground truth images for training palimpsest
+restoration models, all the aforementioned deep
+learning methods generated synthetic data using
+various techniques. Meanwhile, despite the gen-
+eral consensus that diffusion models may achieve
+better results than GANs in other fields (Dhariwal
+and Nichol, 2021; Müller-Franzes et al., 2023),
+there have been relatively few investigations of
+their application in palimpsest restoration. Latent
+diffusion models were investigated by Jampour
+(2025), who also introduced the Synthetic Geor-
+gian Palimpsest datasets (Jampour et al., 2024).
+However, their evaluation was limited to only a
+few palimpsests, leaving it unclear how well the
+method generalises across diverse datasets.
+Palimpsest (under-text) recognition remains an
+under-explored area, with the earliest studies
+emerging as late as 2017 (Starynska et al.,
+2017), focusing primarily on character-level Op-
+tical Character Recognition (OCR). Subsequent
+works have also employed OCR/HTR accuracy as
+an indirect measure of restoration quality (Staryn-
+ska et al., 2021; Madi et al., 2023). To the best of
+our knowledge, no known studies have attempted
+word-level under-text HTR that generalises across
+diverse manuscripts, and existing approaches re-
+main confined to specific manuscript types.
+Because annotated palimpsest data are scarce,
+current studies rely on synthetic datasets that
+closely imitate real manuscripts. This approach
+enables supervised training and quantitative evalu-
+ation of text separation models. Synthetic genera-
+tion also allows controlled creation of target masks
+for text separation and labels for recognition.
+With the emergence of the CLIP model in
+vision-language tasks (Radford et al., 2021), its
+potential for vision-language alignment (Petryk
+et al., 2022) has yet to receive substantial attention
+from researchers working on HTR and palimpsest
+recognition. Existing studies in Scene Text Recog-
+nition have demonstrated the latent OCR capabil-
+ities of CLIP, for example through the incorpora-
+tion of CLIP-based cross-modal alignment plug-
+ins with existing detection heads (Yu et al., 2023)
+and the integration of CLIP encoders with multi-
+branch decoders (Zhao et al., 2024a). Other re-
+search exploring CLIP in OCR tasks has investi-
+gated innovative alignment and distillation tech-
+niques (Wang et al., 2023) as well as integration
+with large language models (Zhao et al., 2024b).
+In this work, CLIP is employed as a guidance
+model whose text-conditioned activation maps,
+obtained via gradient-weighted attention rollout
+(Chefer et al., 2021), are used to supervise the
+
+
+Grad-CAM (Selvaraju et al., 2017) attention of the
+HTR model (in our case the attention-based HTR
+model (Kass and Vats, 2022)), aiming to enhance
+modality alignment. This work also evaluates the
+Pix2pix GAN model, and designs a custom diffu-
+sion model for under-text retrieval and restoration
+tasks.
+Model generalisation and reproducibility
+are of critical importance; therefore, we conduct
+a comprehensive evaluation across three datasets:
+Synthetic MNIST, Synthetic Saint Gall, and Syn-
+thetic Georgian Palimpsest. One of the few well-
+known real palimpsest datasets is the Archimedes
+dataset (Toth and Emery, 2008). However, while
+some under-text is visible, it lacks paired samples
+of overlapping and clean under-text, making it un-
+suitable for training our generative models.
+It is important to note that no sample selection
+is performed in this work and the evaluations are
+conducted across the predefined data splits in ac-
+cordance with the dataset guidelines and evalua-
+tion metrics. We believe this will greatly help fa-
+cilitate future research and benchmarking.
+3
+Methodology
+Our primary objective is to recognise the under-
+text from a synthetic palimpsest. This can be ap-
+proached in two ways: directly perform HTR on
+the partially visible under-text, or first carry out
+text layer separation to reconstruct the under-text
+image, then perform HTR on the reconstructed im-
+age. Experiments are conducted on both methods,
+with the results presented later in section 4.3. In
+this section we first introduce our text separation
+techniques, followed by the HTR methods.
+A palimpsest image x can be viewed approxi-
+mately as a superposition of the over-text xover, the
+under-text xunder and the background writing sup-
+port xbg. The text separation stage (section 3.1)
+in our pipeline aims to leverage generative mod-
+els to extract signals from the under-text as an im-
+age, and the recognition stage (section 3.2) uses an
+HTR model to identify the text from such images
+with the guidance of the CLIP model. The overall
+architecture of the integrated pipeline is shown in
+Figure 1. The following subsections describe the
+text separation and HTR models.
+3.1
+Palimpsest Text Separation
+The text separation process can be expressed as
+training a model that takes the palimpsest image x
+as input, and reconstructs the under-text xunder. In
+the subsequent section we will denote the ground
+truth under-text xunder as the training target y, and
+introduce the two text separation models imple-
+mented in this work.
+3.1.1
+Pix2pix
+Pix2pix is a conditional GAN with skip connec-
+tions, demonstrating state-of-the-art performance
+in text separation for palimpsests on synthetic data
+(Madi et al., 2023). The architecture is well-suited
+for image-to-image translation, enabling the sep-
+aration of under-text, over-text, and background.
+Traditional methods often fail in overlapping re-
+gions (Starynska, 2023), whereas Pix2pix pre-
+serves structural integrity through its U-Net gen-
+erator and adversarial training, yielding higher-
+quality under-text reconstruction. The adversar-
+ial loss further enforces realism in the generated
+outputs (Isola et al., 2017), allowing conditional
+GANs to model inter-pixel dependencies absent in
+standard GANs.
+Conditional GANs such as Pix2pix learn to map
+an input image x to a target image ˆy through two
+competing networks: a generator G and a discrim-
+inator D. G aims to produce ˆy indistinguishable
+from the target real image y, while D learns to
+differentiate between them. Their adversarial in-
+terplay leads both networks toward optimality.
+Pix2pix employs a U-Net generator, an encoder-
+decoder architecture that first downsamples the in-
+put feature x and then reconstructs through up-
+sampling. The forward pass can be expressed as
+x
+GEnc1
+−−−−→f1
+···
+−→
+GEncn
+−−−−→fn
+GDec1
+−−−−→fn+1
+···
+−→
+GDecn
+−−−−→ˆy
+(1)
+where fn denotes the bottleneck feature represen-
+tation, GEnci and GDecj represent the ith encoder
+and the jth decoder in the U-Net.
+The discriminator D is implemented as a Patch-
+GAN, dividing each image into local patches and
+predicting a real/fake probability per patch:
+(x, ˆy)
+DConv1
+−−−−−→f1
+···
+−→
+DConvn
+−−−−−→{pfake
+i
+}N
+i=1,
+(x, y)
+DConv1
+−−−−−→f1
+···
+−→
+DConvn
+−−−−−→{preal
+i
+}N
+i=1,
+(2)
+where Conv1...n stands for convolutional layers
+whose final output is a map of real-valued patch
+scores pi, and N stands for the number of patches
+in each image. The least-squares objectives be-
+low are applied to the patch scores directly, i.e. the
+loss is the mean over the N patches of the per-
+
+
+patch squared errors, 1
+N
+PN
+i=1(pi −c)2 with target
+c ∈{0, 1}.
+To stabilise training, Pix2pix applies the Least
+Squares GAN (LSGAN) loss (Mao et al., 2017),
+which replaces the binary cross-entropy (CE) loss
+(Goodfellow et al., 2014) with a least-square ob-
+jective for stronger gradient feedback.
+The generator loss combines adversarial and re-
+construction terms:
+LG = Ex
+
+(D(x, G(x)) −1)2
++λ Ex,y [∥y −G(x)∥1] ,
+(3)
+where λ = 10 balances the realism and pixel-level
+accuracy; note that this is a smaller reconstruc-
+tion weight than the λ = 100 used by Isola et al.
+(2017). The discriminator loss is defined as
+LD = 1
+2Ex,y
+
+(D(x, y) −1)2
++ 1
+2Ex
+
+(D(x, G(x)))2
+.
+(4)
+Through this loss, D learns to output values close
+to 1 for real samples and close to 0 for generated
+ones, ensuring effective adversarial training.
+3.1.2
+cDDM
+Historical palimpsests are highly diverse and con-
+tain degraded script where the unwanted com-
+ponents (e.g., over-text and complex background
+noises) are highly structured and do not follow
+a Gaussian distribution. Therefore, standard De-
+noising Diffusion Probabilistic Models (DDPM)
+(Ho et al., 2020), which rely on stochastic Gaus-
+sian noise mapping, may discard relevant informa-
+tion when applied to palimpsests. In this work, we
+propose a custom conditional Denoising Diffusion
+Model (cDDM). Instead of using randomly sam-
+pled noise, cDDM adapts the diffusion architec-
+ture to invert a fixed, structured residual and op-
+erates as a deterministic diffusion process. This
+framing aligns with the generalised diffusion liter-
+ature (e.g., Cold Diffusion (Bansal et al., 2023)),
+which demonstrates that the diffusion framework
+can successfully invert arbitrary, non-probabilistic
+image degradations without relying on Gaussian
+assumptions.
+In traditional DDPMs, the Gaussian noise ϵ ∼
+N(0, I) is added in each time step via
+xt = αtxt−1 +
+p
+βtϵ,
+(5)
+where αt controls the signal retention, √βt con-
+trols the noise scale, and t = 1:T indexes the dif-
+fusion steps (with x0 denoting the clean image).
+To address the structured, non-Gaussian artifacts
+in our case, we replace stochastic sampling with a
+deterministic residual between the raw palimpsest
+input x and the target under-text y.
+xt = αtx+(1−αt) y = y+αtϵ,
+ϵ = x−y, (6)
+i.e.
+a convex combination of the palimpsest x
+and the target y, which keeps the target y and the
+full structured residual ϵ present in every latent
+xt.
+Because βt is clipped to [10−4, 2 × 10−2]
+(see Eq.
+8), the coefficient αt = √1 −βt ∈
+[0.990, 1.000] varies only mildly with t: every
+xt remains close to the palimpsest image x, and
+the model is trained, at all noise levels, to regress
+the complete structured residual ϵ = x −y from
+an input that is approximately x. The time step
+therefore acts primarily as an auxiliary condition-
+ing signal (via the time embedding) rather than
+as an interpolation between y and x; this differs
+from standard DDPMs, in which xT is (almost)
+pure noise. In particular, xt never degenerates to
+pure noise, so the structured, non-Gaussian resid-
+ual is available to the network at every step. Input
+images are normalised to [−1, 1] to capture fine
+differences, e.g., between two black texts.
+The residual is defined in the raw pixel space,
+where y denotes the clean target under-text im-
+age that the model is trained to recover from the
+palimpsest images x. At each step, the noise ϵ is
+given by x −y, which represents the unwanted
+components in x, such as the background and
+over-text that are treated as noise.
+The rate at which the noise scale varies is con-
+trolled via a cosine noise scheduler (Nichol and
+Dhariwal, 2021). The cosine scheduler is defined
+as
+¯αt = f(t)
+f(0),
+f(t) = cos2
+t/T + s
+1 + s
+· π
+2
+
+, (7)
+where s = 0.008 is a small offset that prevents βt
+from becoming too small near t = 0 (Nichol and
+Dhariwal, 2021), and per-step noise scales
+βt = clip
+
+1 −
+¯αt
+¯αt−1
+, 10−4, 2 × 10−2
+
+,
+αt =
+p
+1 −βt,
+(8)
+where the clipping bounds, adopted from the
+linear-schedule DDPM convention, cap the per-
+step noise change; for the small T used in cDDM1
+they are active at almost every step, so αt is nearly
+constant (≈0.99).
+
+
+Palimpsest image
+Text
+separation
+model
+Under-text image
+A photo of a hand-
+written word palatiu
+Input guiding text
+HTR model
+CLIP
+text label: palatiu
+text pred: palatw
+HTR activation map AHTR
+CLIP guidance map Agt
+CE loss
++
+activation
+loss
+Figure 1: Architecture of our proposed framework, consisting of two main stages: (i) Under-text sepa-
+ration, where a trained generative model is used to recover the target under-text from the palimpsest. (ii)
+Language-guided HTR, where an HTR model is trained using a standard CE loss between the predicted
+text and the ground truth. To enhance recognition, we introduce a language-guided supervision strategy,
+which aligns the HTR model’s Grad-CAM visual feature maps with text-image alignments derived from
+CLIP via an activation loss. The example palimpsest image originates from the Synthetic Saint Gall
+dataset, and the example under-text image is a reconstructed image using cDDM2.
+Subsequent to the forward process that progres-
+sively adds noise, the reverse process is designed
+to remove noise and reconstruct the original data,
+through training a deep learning model to approx-
+imate the noise and ultimately learn to remove it
+from a latent variable xt. To do so, a U-Net is em-
+ployed to train on (xt, Embedding(t)), where time
+t is embedded into a vector to condition the model
+on the time state. The network flow of the model
+can be expressed as follows:
+(xt, Embedding(t)) E1
+−→f1
+···
+−→En
+−−→fn
+D1
+−−→fn+1
+···
+−→Dn
+−−→ˆϵ,
+(9)
+where E1...n and D1...n are the encoders and de-
+coders of the U-Net, and ˆϵ is the predicted noise.
+The model is then trained on minimising the L1
+loss:
+L = Ex,y,t [∥ˆϵ −ϵ∥1] .
+(10)
+Note that, unlike in standard DDPMs, ϵ = x −y
+is fully determined by the training pair (x, y), so
+the expectation is taken over the data and the time
+step only. At each training iteration, t is randomly
+sampled from a discrete uniform distribution: t ∼
+Uniform{1, . . . , T} (the implementation uses the
+equivalent 0-based indices t−1 ∈{0, . . . , T −1}).
+In the inference stage, the trained U-Net f(·, ·)
+is used to recover previously unseen under-texts
+directly from the palimpsest image x, which is
+treated as the maximally noisy variable xT , with-
+out access to y. In this work we design two denois-
+ing methods, cDDM1 and cDDM2. In cDDM1,
+starting from xT = x, the model re-estimates the
+noise from the current iterate at every step and re-
+moves it deterministically according to:
+ˆϵt ←f(xt, t),
+xt−1 ←xt −√βt · ˆϵt
+αt
+(t = T, . . . , 2),
+ˆy ←x1 −ˆϵ1,
+(11)
+i.e. the deterministic inversion of the standard per-
+step update (Eq. 5) with √βt =
+p
+1 −α2
+t , applied
+with the noise re-estimated from the current iter-
+ate, and with the predicted noise removed directly
+in the final step. Note that this reverse recursion is
+not the exact algebraic inverse of the forward con-
+struction in Eq. 6; because ˆϵ is re-predicted from
+xt at every step, the procedure acts as an iterative
+residual-removal scheme whose per-step magni-
+tude follows the forward cosine schedule.
+cDDM2 performs a single-step reverse process,
+predicting and directly removing noise in xT . To
+improve denoising, a mask sets regions with high
+predicted noise to white, heuristically targeting
+over-text that is otherwise difficult to remove. The
+
+
+process is:
+ˆϵT ←f(xT , T),
+ˆy = xT −ˆϵT ,
+mi,j = I
+
+meanc
+ |ˆϵT (i, j, c)|
+
+> δ
+
+,
+ˆy′
+i,j = mi,j + (1 −mi,j) · ˆyi,j,
+(12)
+where I[·] is the indicator function, the predicted-
+noise magnitude is averaged over colour chan-
+nels c, mi,j masks pixels whose value exceeds
+the threshold δ (setting them to white), and ˆy′ is
+the final denoised image.
+The threshold is set
+per dataset to δ = 0.5 (Synthetic MNIST), 0.8
+(Synthetic Saint Gall) and 0.9 (Synthetic Geor-
+gian), chosen on the training data. Unlike iterative
+cDDM1, noise scaling from the forward sched-
+ule is not applied in this single-step denoising ap-
+proach.
+To the best of our knowledge, this is the first
+diffusion-based approach applied directly in the
+raw pixel space for palimpsest text separation.
+While Jampour (2025) focuses on computational
+efficiency, our cDDM is specifically designed to
+preserve high-frequency handwriting features, al-
+lowing us to benefit from diffusion’s noise re-
+moval capabilities without sacrificing fine detail.
+3.2
+Language-Guided Text Recognition
+The palimpsest HTR learning problem can be for-
+mulated as follows. Given a palimpsest dataset for
+an HTR task T , let each image contain some re-
+gion of pixels that is irrelevant to the task (e.g.
+over-text, damages, degradations) and a region of
+pixels that is relevant (e.g. under-text). The goal is
+to recognise the under-text from certain regions in
+the under-text image (either the raw image or the
+reconstructed image from the text separation).
+In this work, we propose language-guided HTR
+that leverages a vision-language model to guide
+a conventional HTR system by constraining it to
+focus on a more semantically grounded attention
+map. The architecture is shown in the right half of
+Figure 1, starting from the under-text image that
+has been recovered from a given input palimpsest
+image using the text separation model discussed in
+the previous section (Pix2pix or cDDM).
+For every image y (or retrieved image ˆy) and
+ground truth text label ylabel, we create a natural
+language guiding text τ that captures the key se-
+mantic concept relevant to T . This guiding text
+is derived from the dataset’s ground truth label.
+To ensure compatibility with a pretrained vision-
+language model like CLIP, τ consists of descrip-
+tive phrases formatted similarly to CLIP’s default
+notation. For example, we prepend a structured
+prompt such as “A photo of a handwritten word
+label”, where the word label is extracted from the
+dataset’s ground truth text label ylabel.
+For an HTR model fθ with parameters θ, we
+aim to learn an optimal HTR model that outputs a
+text prediction and an activation map for a given
+under-text image as input. To learn an optimal fθ,
+we can estimate a probability map over the latent
+space, where each entry corresponds to the prob-
+ability that pixel is relevant to τ. In this work,
+we build on the AttentionHTR model (Kass and
+Vats, 2022) (AHTR in short). In principle, any
+HTR model that can generate intermediate acti-
+vation maps and support a standard classification
+loss could be used.
+Next, we introduce language-guided supervi-
+sion by generating ground truth activation maps
+from CLIP. We refer to the resulting model as G-
+AHTR (Guided-AttentionHTR). CLIP is a vision-
+language model that takes both an image and a
+text input and produces a similarity score in a
+shared embedding space.
+Although this score
+is global, gradient-based attribution allows us to
+propagate it through CLIP’s visual encoder to
+obtain pixel-level relevance maps (Petryk et al.,
+2022), enabling us to exploit CLIP’s text-image
+alignment without modifying the base HTR archi-
+tecture. Since our CLIP visual encoder is a ViT-
+B/32 transformer, we compute these maps with
+gradient-weighted attention rollout (Chefer et al.,
+2021), accumulating the gradient-weighted atten-
+tion of all transformer blocks into a relevancy map
+over the visual tokens.
+Before extracting activation maps, we fine-tune
+the full CLIP ViT-B/32 model on the training split
+of the respective (reconstructed) dataset with the
+standard symmetric image–text contrastive loss
+(temperature 0.07), using AdamW with learning
+rate 10−6 and weight decay 10−4 for 20 epochs;
+the HTR-sized grayscale images are replicated to
+three channels and bilinearly resized to 224×224.
+Given the under-text image y and guiding text
+τ, we feed both into CLIP (input resized to 224 ×
+224) and obtain a text-conditioned relevance map
+over the visual tokens, which for the ViT-B/32 en-
+coder natively lies on a 7 × 7 grid. This map is
+bilinearly upsampled to the image resolution, un-
+
+
+dergoes the same crop-and-pad preprocessing as
+the input image (Section 4.1), and is bilinearly re-
+sampled to the HTR input grid, yielding
+ACLIP(y, τ) : {1, . . . , 32}×{1, . . . , 100} →[0, 1].
+This map serves as the ground truth activation
+map, denoted Agt ≡ACLIP in the following. Im-
+portantly, we do not use CLIP’s prediction itself,
+only its activation map to provide attention guid-
+ance.
+In parallel, we extract an activation map
+from the HTR model with Grad-CAM (Selvaraju
+et al., 2017) at the last convolutional block of its
+feature extractor, using the summed logits of the
+ground truth character sequence as the class score
+(native resolution 4 × 26), bilinearly interpolated
+and min-max normalised to the same grid:
+AHTR(y) : {1, . . . , 32} × {1, . . . , 100} →[0, 1].
+The L1 activation loss is computed on this com-
+mon 32 × 100 grid.
+Before entering the loss,
+the guidance map is affinely rescaled to the input
+value range, ˜
+Agt = 2Agt −1 ∈[−1, 1], while
+the predicted map AHTR remains in [0, 1]. This
+asymmetric scaling serves two purposes: it am-
+plifies the guidance gradients relative to matched-
+range maps, and, since the predicted map cannot
+attain the negative target values assigned to low-
+relevance regions, it persistently drives the pre-
+dicted attention toward zero outside the text re-
+gion, acting as a sharpening prior on the guidance.
+The HTR model fθ is then trained on minimis-
+ing two objectives: (i) the original CE loss be-
+tween the predicted text and the ground truth tran-
+scription, and (ii) a complementary activation loss
+between the HTR and CLIP activation maps. The
+activation loss refers to the difference between the
+two activation maps, in the form of L1 norm. An
+unweighted sum of the two constitutes the final
+training objective:
+L(ˆylabel, ylabel, x, τ) =LHTR(ˆylabel, ylabel)
++Lactivation
+˜
+Agt
+i,j(y, τ),
+AHTR
+i,j (y)
+
+where ˆylabel is the predicted transcription, ylabel is
+the ground truth text, x is the input image, and
+τ is the guiding text.
+Here,
+˜
+Agt
+i,j(y, τ) denotes
+the rescaled ground truth activation map extracted
+from CLIP, and AHTR
+i,j (y) is the activation map
+from the HTR model.
+4
+Experimental Results
+The proposed methods are empirically evaluated
+on three synthetic datasets using standard evalua-
+tion metrics. This section is organised as follows.
+We begin by presenting the synthetic datasets and
+detailing the process to create them. Next, we de-
+scribe the evaluation metrics used.
+Finally, we
+present the results for both text separation and
+recognition across three scenarios: (a) recognition
+from the original datasets (MNIST and Saint Gall)
+without overlapping text, serving as a baseline; (b)
+direct recognition of the partially visible under-
+text from palimpsest images; and (c) recognition
+following text layer separation, where the under-
+text is first reconstructed.
+4.1
+Datasets
+4.1.1
+Synthetic MNIST
+We replicate the Synthetic MNIST dataset used
+by Starynska et al. (2021) with both diversity and
+manageable file size in mind. The original MNIST
+digits (Deng, 2012) serve as target under-texts. To
+emulate palimpsest data, where backgrounds are
+typically lighter than text, each image I(x, y) is in-
+verted, I(x, y) = 255−I(x, y), where x, y denote
+pixel coordinates and intensities are in [0, 255].
+The target images are randomly rotated by θ ∼
+Uniform(−20◦, 20◦) using bi-cubic resampling:
+I′(x′, y′) = I(R−1
+θ (x′, y′)),
+x′
+y′
+
+=
+cos θ
+−sin θ
+sin θ
+cos θ
+ x −xc
+y −yc
+
++
+xc
+yc
+
+.
+(13)
+The target text is assigned a random low-
+intensity uniform colour i ∼Uniform(0, 50) in
+RGB channels:
+ICRGB(x, y) = [i, i, i],
+(14)
+and a fourth transparency channel preserves the
+original MNIST pixel intensities:
+ICα(x, y) = 1 −I(x, y)
+255 .
+(15)
+Backgrounds with parchment-like colours are
+generated with channel-wise uniform noise:
+ICR(x, y) ∼Uniform(200, 250),
+ICG(x, y) ∼Uniform(220, 230),
+ICB(x, y) ∼Uniform(150, 190).
+(16)
+
+
+Under-texts are extracted using a threshold
+I(x, y) < 200 and centred on the background.
+Over-texts consist of random Latin characters
+(A–Z) with random font, size (20-25), colour
+(Eq. 14), and rotation (Eq. 13). Finally, additional
+noise n ∼Uniform(1, 10) is applied:
+NC(x, y) ∼Uniform(−n, n),
+I′
+C(x, y) = IC(x, y) + NC(x, y).
+(17)
+The dataset contains 60 000 training and 10 000
+test samples, following MNIST’s original split.
+4.1.2
+Synthetic Saint Gall
+The Saint Gall dataset (Fischer et al., 2011) orig-
+inates from a 9th century Latin manuscript and
+comprises 60 pages of Carolingian minuscule
+script by a single scribe. It contains 1 410 text
+lines and 11 597 words. Images were binarised,
+normalised, and paired with sentence-level labels.
+Its historical significance, complex script, and ink-
+on-parchment characteristics make it a valuable
+benchmark for HTR models.
+A synthetic version was generated to introduce
+real historical text and extend processing to larger
+images with longer words.
+Under-text was ex-
+tracted at the word level using provided bound-
+ing boxes, separated from the background with
+a threshold of 100, and placed on a transparent
+350×350 canvas. Words exceeding 350 pixels in
+width were skipped. Under-text colour and rota-
+tion followed Eq. 14 and Eq. 13.
+Backgrounds were generated similarly to the
+synthetic MNIST dataset with 350×350 pixel can-
+vases, using Eq. 16 for color, uniform noise n ∼
+Uniform(1, 50) (Eq. 17), salt-and-pepper noise ∼
+Uniform(0, 0.04), and Gaussian noise with 50%
+probability, σ ∼Uniform(1, 3). Under-text was
+centred and images resized to 224×224 to reduce
+computation while preserving quality. Over-texts
+consisted of random Latin strings with random
+fonts, size 30-40, overlaid on under-text.
+Prior to recognition, all images are dynamically
+cropped to ensure a text-focused region and pre-
+vent geometric distortion. Since our HTR model
+has a fixed 100 × 32 input resolution, directly re-
+sizing the original 224×224 images severely com-
+pressed the text due to excess vertical white space.
+To address this, we use Otsu’s thresholding to de-
+tect the ink pixels and establish a bounding box.
+This box is then padded with background pixels
+to exactly match the target 100 × 32 aspect ratio
+Figure 2: Combined and under-text patches from
+the processed synthetic Georgian dataset.
+before final resizing, ensuring the morphological
+features of the handwriting remain strictly undis-
+torted.
+The final synthetic dataset comprises 6 514 train-
+ing and 1 050 test images; for HTR training, the
+training images are further split 90/10 into training
+and validation subsets, with the validation subset
+used for model selection.
+4.1.3
+Synthetic Georgian Palimpsest dataset
+The synthetic Georgian dataset (Jampour et al.,
+2024), used in this work, simulates multi-spectral
+samples from the real Georgian palimpsest (Sinai-
+Project, 2025). Under-texts consist of 7th-8th cen-
+tury Caucasian Albanian text from Sinai Georgian
+NF 13 and 55, while backgrounds were cropped
+from text-free areas of the real palimpsest and pre-
+pared via stitching and cleaning. Random over-
+text was added, but only under-texts are consid-
+ered in this work.
+Targets with white backgrounds were gener-
+ated by extracting under-texts using a channel-
+wise threshold, as in Eq. 18:
+MC(x, y) =
+
+
+
+
+
+
+
+
+
+
+
+1,
+if
+
+
+205
+0
+0
+
+≤IC(x, y) ≤
+
+
+255
+100
+100
+
+,
+0,
+otherwise,
+IC(x, y) = MC(x, y) · Iorig
+C
+(x, y) + (1 −MC(x, y)) · 255.
+(18)
+Original images were 2100×2800 pixels, too
+large for training. Both combined and under-text
+images were split into 48 patches of 350×350,
+then resized to 224×224 pixels to preserve read-
+ability. Full-image resizing rendered text unread-
+able. Examples are shown in Figure 2, with rare
+cases of slight over-extraction due to red intensity
+in the background.
+The final synthetic Georgian dataset used in this
+work has 43 200 patches of training data and 4 800
+patches of testing data.
+
+
+4.2
+Evaluation Metrics
+Text separation:
+To assess image quality for the
+text separation models Pix2pix and cDDM, we use
+standard metrics: Structural Similarity Index Mea-
+sure (SSIM), Peak Signal-to-Noise Ratio (PSNR),
+and the Fréchet Inception Distance (FID).
+SSIM (Wang et al., 2004) quantifies local sim-
+ilarity between generated images ˆy and target im-
+ages y based on luminance, contrast, and structure:
+SSIM(ˆy, y) =
+(2µˆyµy + C1)(2σˆyy + C2)
+(µ2
+ˆy + µ2y + C1)(σ2
+ˆy + σ2y + C2).
+Here, µˆy, µy denote image means (luminance),
+σˆy, σy their standard deviations (contrast), σˆyy the
+covariance (structure), and C1, C2 are small con-
+stants that stabilise the division. SSIM takes val-
+ues in [−1, 1], where 1 indicates perfect similarity.
+PSNR (Wang and Bovik, 2009) measures re-
+construction quality using the mean squared error
+(MSE):
+MSE(ˆy, y) =
+1
+nm
+n
+X
+i=1
+m
+X
+j=1
+[y(i, j) −ˆy(i, j)]2,
+PSNR(ˆy, y) = 10 log10
+
+L2
+MSE(ˆy, y)
+
+.
+where L is the maximum pixel value, and n, m
+is the image dimensions.
+Higher PSNR indi-
+cates better fidelity; values above 40 suggest high-
+quality reconstruction.
+FID (Heusel et al., 2017) measures similarity
+between feature distributions extracted from the
+2048-d pool3 features of a pretrained Inception-v3
+network (pytorch-fid), assuming Gaussian statis-
+tics:
+FID(Xy, Xˆy) =∥µy −µˆy∥2
+2
++ Tr
+
+Σy + Σˆy −2(ΣyΣˆy)1/2
+.
+Lower FID values indicate that generated images
+are closer to the real image distribution.
+Text recognition:
+Recognition performance for
+AHTR and G-AHTR is measured using Word Ac-
+curacy (WAcc), computed as:
+WAcc (%) = 100 −WER (%),
+where, since recognition is performed at the
+isolated-word level, the Word Error Rate (WER)
+is the percentage of test words that are not recog-
+nised exactly. We also compute Normalised Edit
+Distance (NormED) and Character Error Rate
+(CER) to further analyse model performance.
+NormED is defined as
+NormED = 1
+N
+N
+X
+n=1
+EditDistance(y(n), ˆy(n))
+|y(n)|
+,
+where y(n) and ˆy(n) here denote the ground truth
+and predicted transcriptions of the nth test sam-
+ple (character sequences, in contrast to their use
+as images elsewhere), EditDistance(·) is the Lev-
+enshtein distance, | · | denotes sequence length,
+and samples with an empty ground truth or pre-
+diction contribute zero. CER quantifies character-
+level recognition errors at the corpus level, CER =
+P
+n EditDistance(y(n), ˆy(n)) / P
+n |y(n)|.
+Dataset
+MNIST
+Saint Gall
+Method
+WAcc(%) ↑
+WAcc(%) ↑
+CER(%) ↓
+NormED ↓
+AHTR
+99.34 (±0.05)
+94.64 (±0.51)
+1.26 (±0.12)
+0.0127 (±0.0013)
+G-AHTR
+99.37 (±0.06)
+94.40 (±0.37)
+1.31 (±0.10)
+0.0131 (±0.0009)
+Table 1: Baseline recognition performance on the
+original MNIST and Saint Gall datasets, reported
+in WAcc(%) for MNIST and WAcc(%), CER(%),
+NormED for Saint Gall. Results are averaged over
+10 runs with standard deviation (±).
+4.3
+Results
+Experimental results for text separation and recog-
+nition are reported across three scenarios high-
+lighted in Section 4, as follows.
+a.
+Baseline results:
+Table 1 presents the
+baseline recognition performance for the origi-
+nal MNIST and Saint Gall datasets. Since these
+datasets contain no overlapping texts, only recog-
+nition performance is reported. For each experi-
+ment, we performed 10 independent training runs
+and report the average model performance.
+The recognition of the Synthetic Georgian
+palimpsest is not considered here because its texts
+overlap, which makes a reliable baseline unavail-
+able. Moreover, performing HTR on the Synthetic
+Georgian dataset is not feasible due to the lack of
+annotations, transcriptions, and training labels.
+b. Direct recognition from overlaid palimpsest:
+We then evaluate the performance of HTR
+methods in recognising the under-texts directly
+from the overlaid images in synthetic palimpsest
+datasets, following the exact same pipeline as we
+used in scenario (a). The results are reported in
+
+
+Dataset
+Synthetic MNIST
+Synthetic Saint Gall
+Synthetic Georgian
+Methods
+SSIM ↑
+PSNR ↑
+FID ↓
+SSIM ↑
+PSNR ↑
+FID ↓
+SSIM ↑
+PSNR ↑
+FID ↓
+(Starynska et al., 2021)
+-
+17.781
+-
+-
+-
+-
+-
+-
+-
+(Jampour, 2025)
+-
+-
+-
+-
+-
+-
+-
+-
+144.68*
+Pix2pix
+0.9383
+23.242
+3.849
+0.9855
+27.771
+11.066
+0.9913
+37.619
+20.367
+cDDM1
+0.8879
+21.634
+20.054
+0.9804
+26.238
+21.285
+0.9509
+27.574
+49.942
+cDDM2
+0.9419
+23.238
+3.837
+0.9939
+32.753
+19.678
+0.9750
+31.384
+31.055
+Table 2: Text separation results on synthetic palimpsest datasets using Pix2pix and cDDMs. Results from
+related works are included for comparison. *Note that Jampour (2025) reported three document-level
+FID values, we therefore use their median in our table.
+Dataset
+Synthetic MNIST
+Synthetic Saint Gall
+Methods
+Scenario
+WAcc (%) ↑
+WAcc (%) ↑
+WER (%) ↓
+CER (%) ↓
+Norm ED ↓
+(Starynska et al., 2021)
+91.90
+-
+-
+-
+-
+AHTR
+Overlaid
+97.71 (±0.12)
+79.63 (±1.48)
+20.37 (±1.48)
+5.75 (±0.43)
+0.0612 (±0.0054)
+Pix2pix
+96.83 (±0.12)
+62.25 (±1.87)
+37.75 (±1.87)
+12.40 (±0.68)
+0.1430 (±0.0075)
+cDDM2
+97.83 (±0.11)
+91.70 (±0.73)
+8.30 (±0.73)
+1.95 (±0.25)
+0.0210 (±0.0030)
+G-AHTR
+Overlaid
+97.68 (±0.15)
+78.30 (±1.38)
+21.70 (±1.38)
+6.18 (±0.48)
+0.0660 (±0.0055)
+Pix2pix
+96.81 (±0.11)
+61.58 (±0.86)
+38.42 (±0.86)
+12.59 (±0.50)
+0.1450 (±0.0070)
+cDDM2
+97.97 (±0.08)
+91.78 (±0.83)
+8.22 (±0.83)
+1.98 (±0.24)
+0.0218 (±0.0027)
+Table 3: Comparison of the average performance of AHTR and G-AHTR on Synthetic MNIST and Syn-
+thetic Saint Gall over 10 runs with standard deviation (±). Results are shown for direct recognition from
+the “overlaid” palimpsest images and for recognition after text separation using Pix2pix and cDDM2.
+cDDM1 is omitted due to its consistently lower separation performance compared to cDDM2.
+WAcc, CER, and NormED, listed in rows under
+scenario “Overlaid” in Table 3.
+As can be observed in Table 3, performing HTR
+directly on synthetic palimpsests without first sep-
+arating the text layers is, as expected, challeng-
+ing due to the partial visibility of the under-text.
+However, evaluating the performance of our HTR
+models in this setting provides valuable insights
+and highlights the need for effective text separa-
+tion, discussed below.
+c. Recognition with text separation:
+Further-
+more, we integrate the text separation stage into
+the HTR pipeline, where Pix2pix and cDDMs
+are used to reconstruct the under-text from the
+palimpsest images. The models are trained on the
+respective training splits of each dataset, with hy-
+perparameters (such as learning rate, epochs, and
+cDDM denoising steps) optimised to obtain the
+best models.
+The saved model checkpoints are
+then used to perform reconstructions on the test
+sets.
+The separation results are evaluated using the
+three metrics introduced in Section 4.2: SSIM,
+PSNR, and FID, as reported in Table 2.
+Overall, cDDM2 achieves the best performance
+on Synthetic MNIST and Synthetic Saint Gall,
+obtaining the highest SSIM on both datasets, to-
+gether with the lowest FID and near-best PSNR
+on Synthetic MNIST and the highest PSNR on
+Synthetic Saint Gall (where Pix2pix retains the
+lowest FID), demonstrating the effectiveness of
+our proposed custom noise mechanism. Its per-
+formance on Synthetic Georgian is slightly lower
+than that of Pix2pix, primarily due to colour dis-
+crepancies. This can be observed in the examples
+in Figure 3, where the cDDM reconstructions ap-
+pear lighter than those of Pix2pix; however, the
+under-text shapes are clearly revealed and do not
+hinder recognition.
+The MNIST results (first row of Figure 3)
+further reveal an interesting difference: Pix2pix
+often behaves more rigidly than cDDM by at-
+tempting to forcefully recover all visible details,
+such as the black dot above the true under-text
+“9”, originating from the over-text “T”. This
+rigidity contributes to Pix2pix’s consistently low
+
+
+Figure 3: Examples of text separation results from different models, shown alongside the input palimpsest
+image and the ground truth under-text. The examples are drawn from the Synthetic MNIST, Synthetic
+Saint Gall, and Synthetic Georgian datasets (top to bottom).
+FID. However, because FID assumes a Gaussian
+distribution–and, as discussed in Section 3.1.2
+palimpsest noise is not always Gaussian, FID may
+be statistically biased (Chong and Forsyth, 2020;
+Jayasumana et al., 2024).
+Moreover, this ten-
+dency to reproduce irrelevant or misleading arti-
+facts may negatively affect the downstream recog-
+nition stage.
+The reconstructed under-text images are then
+used as inputs for HTR training and testing. Table
+3 reports the performance when text separation is
+applied prior to HTR. Since AHTR is designed for
+Latin characters only, its results are not compared
+with previous works involving other scripts, such
+as Greek, Syriac, and Hebrew (Madi et al., 2023).
+As a baseline observation, integrating under-text
+separation substantially improves recognition ac-
+curacy over direct HTR on raw palimpsests, par-
+ticularly on the highly challenging Saint Gall
+dataset. Among the evaluated pipelines, our pro-
+posed cDDM2 + G-AHTR framework achieves
+the best overall performance, yielding the high-
+est mean WAcc and lowest mean WER on both
+the Synthetic MNIST and Synthetic Saint Gall
+datasets, although the margins over cDDM2 +
+AHTR lie within one standard deviation of the
+ten runs. In particular, when paired with cDDM2
+reconstructions, G-AHTR yields small improve-
+ments in word-level metrics (WAcc/WER), while
+CER does not improve (1.98 vs. 1.95 on Synthetic
+Saint Gall); with Overlaid and Pix2pix inputs, G-
+AHTR performs on par with or slightly below
+AHTR, suggesting that the guidance is most useful
+when the reconstructed under-text is of high qual-
+ity. This disparity is expected, as the high vari-
+ability and ambiguity inherent in handwritten text
+make character-level recognition more challeng-
+ing. It is worth noticing that the language guiding
+mechanism comes at no cost on training stability,
+since the standard deviations of G-AHTR results
+are around the same level as those of AHTR.
+While the absolute performance gains provided
+by the language-guided supervision are modest,
+we hypothesise that the performance ceiling is
+constrained by the following primary factors: i)
+the inherent limitations of CLIP in fine-grained
+handwriting recognition, which become more ob-
+vious when the intermediate recovered under-text
+remains highly degraded; ii) gradient competition
+between the primary CE loss and the auxiliary ac-
+tivation constraint, as strict spatial alignment with
+CLIP’s feature maps can be partially orthogonal
+to the optimal feature representations needed for
+pure character decoding.
+To further illustrate the contribution of the
+vision-language (CLIP) component, Figure 4 vi-
+sualises the ground truth activation map from the
+fine-tuned CLIP model, and Table 4 shows the
+activation maps computed from AHTR and G-
+AHTR during training on an arbitrarily selected
+example. These maps show that the CLIP-guided
+activation constraint encourages G-AHTR to focus
+
+
+AHTR
+G-AHTR
+Table 4: Comparison of activation maps on example under-text “itaq” obtained from AHTR and G-AHTR
+during training, on every third epoch (i.e. epochs 1, 4, 7, 10, 13 and 16). The activation maps from G-
+AHTR show clear signs of convergence toward the CLIP map.
+(a) cDDM
+(b) CLIP
+Figure 4: Under-text image from cDDM and the
+activation map from CLIP for “itaq”.
+more strongly on the under-text regions while sup-
+pressing irrelevant artifacts and noise. This shift in
+activation toward semantically meaningful regions
+provides more interpretable model behaviour and,
+in the cDDM2 setting, coincides with small word-
+level accuracy gains. In particular, in challenging
+cases where AHTR hallucinates the word endings,
+G-AHTR tends to make more reasonable predic-
+tions (see Table 5).
+These findings deepen the understanding of how
+automatic methods could be applied and inter-
+preted when developing and evaluating palimpsest
+reconstructions.
+Our G-AHTR method intro-
+duces a new paradigm in cross-modal regulari-
+sation by anchoring the HTR model’s visual at-
+tention to CLIP’s vision-language alignments via
+GALS (Guiding visual Attention with Language
+Specification) (Petryk et al., 2022). This frame-
+work offers a foundational guidance mechanism
+that can be extended across diverse domains.
+5
+Conclusion
+This work advances automated palimpsest re-
+covery by integrating structured noise modelling,
+generative reconstruction, and language-grounded
+recognition. We design a custom denoising dif-
+fusion model to capture layered degradation, ex-
+plore Pix2pix GANs for restoration, and incor-
+porate textual priors from vision-language atten-
+tion maps for under-text recognition.
+Experi-
+ments demonstrate improved performance across
+diverse benchmarks. In particular, the cDDM2 +
+G-AHTR pipeline achieves the best word-level re-
+sults and competitive overall scores, while yield-
+ing more interpretable attention behaviour. Per-
+Original label
+AHTR
+G-AHTR
+impossibile
+impossibilitie
+impossibile
+solitudinis
+solitudiiis
+solitudinis
+solatium
+solattuum
+solatium
+construens
+construeninininininininin
+construeni
+linea
+lineama
+linea
+Table 5: Example predictions from Synthetic Saint
+Gall (in Latin) show G-AHTR is less likely to hal-
+lucinate than AHTR, highlighting the advantage of
+language-guided HTR.
+formance variations across the synthetic MNIST,
+Saint Gall, and Georgian datasets stem from dif-
+ferences in ink properties, script complexity, and
+background noise, influencing the suitability of
+the GAN, diffusion, and HTR components.
+To
+support future research and standardised bench-
+marking, we release synthetic datasets, CLIP-
+compatible annotations, and pre-trained models.
+Future work includes exploring other HTR ar-
+chitectures and generalisation, though we used
+AHTR for its ease of use and reproducible code.
+We plan to extend evaluations from word-level to
+line- and page-level, test on real palimpsests such
+as the Archimedes dataset, and fine-tune the CLIP
+model on large-scale handwriting corpora.
+Fi-
+nally, we aim to establish a comprehensive bench-
+mark for palimpsest research, including curated
+datasets, methods, and evaluation metrics.
+6
+Acknowledgments
+This research was supported by the Kjell and
+Märta Beijer Foundation, and the Wallenberg
+AI, Autonomous Systems and Software Program
+(WASP) funded by the Knut and Alice Wallen-
+berg Foundation. Computational resources were
+provided on the Berzelius system funded by the
+Knut and Alice Wallenberg foundation and oper-
+ated by NAISS. The authors thank Prashant Singh
+and Anna Starynska for valuable discussions and
+feedback, and the Action Editor and reviewers for
+their constructive comments.
+
+
+References
+Arpit Bansal, Eitan Borgnia, Hong-Min Chu,
+Jie Li, Hamid Kazemi, Furong Huang, Micah
+Goldblum, Jonas Geiping, and Tom Goldstein.
+2023. Cold diffusion: Inverting arbitrary im-
+age transforms without noise. Advances in Neu-
+ral Information Processing Systems, 36:41259–
+41282.
+Hila Chefer, Shir Gur, and Lior Wolf. 2021.
+Generic attention-model explainability for in-
+terpreting bi-modal and encoder-decoder trans-
+formers. In 2021 IEEE/CVF International Con-
+ference on Computer Vision (ICCV), pages 387–
+396. IEEE.
+Yung-Hsin Chen and Phillip B Ströbel. 2024.
+Trocr meets language models:
+An end-to-
+end post-correction approach. In International
+Conference on Document Analysis and Recog-
+nition, pages 12–26. Springer.
+Min Jin Chong and David Forsyth. 2020.
+Ef-
+fectively unbiased fid and inception score and
+where to find them.
+In Proceedings of the
+IEEE/CVF conference on computer vision and
+pattern recognition, pages 6070–6079.
+Li Deng. 2012. The mnist database of handwritten
+digit images for machine learning research [best
+of the web]. IEEE signal processing magazine,
+29(6):141–142.
+Prafulla Dhariwal and Alexander Nichol. 2021.
+Diffusion models beat gans on image synthesis.
+Advances in neural information processing sys-
+tems, 34:8780–8794.
+Roger L. Easton, William A. Christens-Barry, and
+Keith T. Knox. 2011. Spectral image process-
+ing and analysis of the archimedes palimpsest.
+In 2011 19th European Signal Processing Con-
+ference, pages 1440–1444.
+Andreas Fischer, Volkmar Frinken, Alicia Fornés,
+and Horst Bunke. 2011.
+Transcription align-
+ment of latin manuscripts using hidden markov
+models. In Proceedings of the 2011 workshop
+on historical document imaging and processing,
+pages 29–36.
+Ian Goodfellow,
+Jean Pouget-Abadie,
+Mehdi
+Mirza, Bing Xu, David Warde-Farley, Sherjil
+Ozair, Aaron Courville, and Yoshua Bengio.
+2014. Generative adversarial networks. In Ad-
+vances in Neural Information Processing Sys-
+tems, volume 27. NeurIPS.
+Martin Heusel, Hubert Ramsauer, Thomas Un-
+terthiner, Bernhard Nessler, and Sepp Hochre-
+iter. 2017. Gans trained by a two time-scale up-
+date rule converge to a local nash equilibrium.
+Advances in neural information processing sys-
+tems, 30.
+Jonathan Ho, Ajay Jain, and Pieter Abbeel. 2020.
+Denoising diffusion probabilistic models. Ad-
+vances in neural information processing sys-
+tems, 33:6840–6851.
+Phillip Isola, Jun-Yan Zhu, Tinghui Zhou, and
+Alexei A Efros. 2017. Image-to-image trans-
+lation with conditional adversarial networks. In
+Proceedings of the IEEE Conference on Com-
+puter Vision and Pattern Recognition (CVPR),
+pages 1125–1134.
+Mahdi Jampour. 2025.
+Revealing palimpsests
+with latent diffusion models: A generative ap-
+proach to image inpainting and handwriting re-
+construction. In Proceedings of the Winter Con-
+ference on Applications of Computer Vision,
+pages 279–286.
+Mahdi Jampour, Hussein Mohammed, and Jost
+Gippert. 2024.
+Enhancing the readability of
+palimpsests using generative image inpainting.
+In ICPRAM, pages 687–694.
+Sadeep Jayasumana, Srikumar Ramalingam, An-
+dreas Veit, Daniel Glasner, Ayan Chakrabarti,
+and Sanjiv Kumar. 2024. Rethinking fid: To-
+wards a better evaluation metric for image gen-
+eration. In Proceedings of the IEEE/CVF Con-
+ference on Computer Vision and Pattern Recog-
+nition, pages 9307–9315.
+Dmitrijs Kass and Ekta Vats. 2022.
+Attention-
+htr: Handwritten text recognition based on at-
+tention encoder-decoder networks.
+In Inter-
+national Workshop on Document Analysis Sys-
+tems, pages 507–522. Springer.
+Hongliang Li, Dezhi Peng, and Lianwen Jin. 2025.
+Ego-lm: An efficient, generic, and out-of-the-
+box language model for handwritten text recog-
+nition. Pattern Recognition, 159:111130.
+
+
+Boraq Madi, Reem Alaasam, Raed Shammas, and
+Jihad El-Sana. 2023. Scheme for palimpsests
+reconstruction using synthesized dataset.
+In-
+ternational Journal on Document Analysis and
+Recognition (IJDAR), 26(3):211–222.
+Xudong Mao, Qing Li, Haoran Xie, Raymond YK
+Lau, Zhen Wang, and Stephen Paul Smolley.
+2017. Least squares generative adversarial net-
+works.
+In Proceedings of the IEEE interna-
+tional conference on computer vision, pages
+2794–2802.
+Gustav Müller-Franzes, Jan Moritz Niehues, Fi-
+ras Khader, Soroosh Tayebi Arasteh, Christoph
+Haarburger, Christiane Kuhl, Tianci Wang,
+Tianyu Han, Teresa Nolte, Sven Nebelung, et al.
+2023. A multimodal comparison of latent de-
+noising diffusion probabilistic models and gen-
+erative adversarial networks for medical image
+synthesis. Scientific Reports, 13(1):12098.
+Alexander Quinn Nichol and Prafulla Dhariwal.
+2021. Improved denoising diffusion probabilis-
+tic models. In International conference on ma-
+chine learning, pages 8162–8171. PMLR.
+Michela Perino, Michele Ginolfi, Anna Candida
+Felici, and Michela Rosellini. 2023.
+A deep
+learning experiment for semantic segmentation
+of overlapping characters in palimpsests. arXiv
+preprint arXiv:2311.01130.
+Suzanne Petryk, Lisa Dunlap, Keyan Nasseri,
+Joseph Gonzalez, Trevor Darrell, and Anna
+Rohrbach. 2022.
+On guiding visual attention
+with language specification. In Proceedings of
+the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition, pages 18092–18102.
+Alec Radford, Jong Wook Kim, Chris Hallacy,
+Aditya Ramesh, Gabriel Goh, Sandhini Agar-
+wal, Girish Sastry, Amanda Askell, Pamela
+Mishkin, Jack Clark, et al. 2021.
+Learning
+transferable visual models from natural lan-
+guage supervision. In International conference
+on machine learning, pages 8748–8763. PmLR.
+Emanuele Salerno, Anna Tonazzini, and Luigi Be-
+dini. 2007. Digital image analysis to enhance
+underwritten text in the archimedes palimpsest.
+International Journal of Document Analysis
+and Recognition (IJDAR), 9(2):79–87.
+Ramprasaath R Selvaraju, Michael Cogswell,
+Abhishek Das, Ramakrishna Vedantam, Devi
+Parikh, and Dhruv Batra. 2017.
+Grad-cam:
+Visual explanations from deep networks via
+gradient-based localization. In Proceedings of
+the IEEE international conference on computer
+vision, pages 618–626.
+Sinai-Project. 2025. Ucla sinai library project.
+Anna Starynska. 2023.
+Text Restoration in
+Palimpsested Historical Manuscripts Using
+Deep
+Learning
+Methods.
+Ph.D.
+thesis,
+Rochester Institute of Technology.
+Anna Starynska, Roger L Easton Jr, and David
+Messinger. 2017. Methods of data augmenta-
+tion for palimpsest character recognition with
+deep neural network.
+In Proceedings of the
+4th International Workshop on Historical Doc-
+ument Imaging and Processing, pages 54–58.
+Anna Starynska, David Messinger, and Yu Kong.
+2021. Revealing a history: palimpsest text sep-
+aration with generative networks. International
+Journal on Document Analysis and Recognition
+(IJDAR), 24(3):181–195.
+Anna Tonazzini. 2010. Color space transforma-
+tions for analysis and enhancement of ancient
+degraded manuscripts. Pattern Recognition and
+Image Analysis, 20(3):404–417.
+Mike Toth and Doug Emery. 2008. Archimedes
+palimpsest digital release.
+Zhou Wang, A.C. Bovik, H.R. Sheikh, and
+E.P. Simoncelli. 2004.
+Image quality assess-
+ment: from error visibility to structural similar-
+ity. IEEE Transactions on Image Processing,
+13(4):600–612.
+Zhou Wang and Alan C. Bovik. 2009.
+Mean
+squared error: Love it or leave it? a new look
+at signal fidelity measures. IEEE Signal Pro-
+cessing Magazine, 26(1):98–117.
+Zixiao Wang, Hongtao Xie, Yuxin Wang, Jian-
+jun Xu, Boqiang Zhang, and Yongdong Zhang.
+2023.
+Symmetrical linguistic feature distilla-
+tion with clip for scene text recognition. In Pro-
+ceedings of the 31st ACM international confer-
+ence on multimedia, pages 509–518.
+
+
+Wenwen Yu, Yuliang Liu, Wei Hua, Deqiang
+Jiang, Bo Ren, and Xiang Bai. 2023.
+Turn-
+ing a clip model into a scene text detector. In
+Proceedings of the IEEE/CVF conference on
+computer vision and pattern recognition, pages
+6978–6988.
+Shuai Zhao, Ruijie Quan, Linchao Zhu, and
+Yi Yang. 2024a. Clip4str: A simple baseline for
+scene text recognition with pre-trained vision-
+language model. IEEE transactions on Image
+Processing.
+Xiaoqing Zhao, Miaomiao Xu, Wushour Silamu,
+and Yanbing Li. 2024b.
+Clip-llama: A new
+approach for scene text recognition with a pre-
+trained vision-language model and a pre-trained
+language model. Sensors, 24(22):7371.
