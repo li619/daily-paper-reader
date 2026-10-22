@@ -1,0 +1,1089 @@
+Title: DRetHTR: Linear-Time Decoder-Only Retentive Network for Handwritten Text Recognition
+
+URL Source: https://arxiv.org/pdf/2602.17387v1
+
+Published Time: Fri, 20 Feb 2026 01:55:24 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# DRetHTR: Linear-Time Decoder-Only Retentive Network for Handwritten Text Recognition 
+
+# Changhun Kim 1 , Martin Mayr 1, Thomas Gorges 1, Fei Wu 1, Mathias Seuret 1,Andreas Maier 1, Vincent Christlein 11 Pattern Recognition Lab, Friedrich-Alexander-Universit¨ at Erlangen-N¨ urnberg, Germany 
+
+ABSTRACT 
+
+State-of-the-art handwritten text recognition (HTR) systems com-monly use Transformers, whose growing key-value (KV) cache makes decoding slow and memory-intensive. We introduce DRetHTR, a decoder-only model built on Retentive Networks (RetNet). Compared to an equally sized decoder-only Transformer baseline, DRetHTR delivers 1.6–1.9 × faster inference with 38–42% less memory us-age, without loss of accuracy. By replacing softmax attention with softmax-free retention and injecting multi-scale sequential priors, DRetHTR avoids a growing KV cache: decoding is linear in output length in both time and memory. To recover the local-to-global induc-tive bias of attention, we propose layer-wise gamma scaling, which progressively enlarges the effective retention horizon in deeper layers. This encourages early layers to model short-range dependencies and later layers to capture broader context, mitigating the flexibility gap introduced by removing softmax. Consequently, DRetHTR achieves best reported test character error rates of 2.26% (IAM-A, en), 1.81% (RIMES, fr), and 3.46% (Bentham, en), and is competitive on READ-2016 (de) with 4.21%. This demonstrates that decoder-only RetNet enables Transformer-level HTR accuracy with substantially improved decoding speed and memory efficiency. 
+
+Index Terms — Handwritten Text Recognition (HTR), Retentive Network (RetNet), Efficient inference, Decoder-only architecture, Image–text fusion 
+
+1. INTRODUCTION 
+
+Digitized documents permeate healthcare, insurance, government, and finance, yet a vast body of handwritten content remains locked in archives and libraries worldwide. Handwritten Text Recogni-tion (HTR) addresses these challenges by teaching machines to de-code handwriting: platforms such as Transkribus [1] have demon-strated the practical impact of large-scale transcription for historians, genealogists, and the digital humanities, accelerating scholarship and public access to archival records. Beyond cultural heritage, modern administrative workflows across sectors have also been automated by HTR, saving enormous manual labor and improving productiv-ity [2]. HTR is a pattern recognition problem over visual sequences: the system must map an input image to a character sequence while leveraging linguistic regularities in context. Initial approaches such as Hidden Markov Models (HMMs) [3] transitioned to more complex architectures like Bidirectional Long Short-Term Memory (BiLSTM). However, distinguishing between similar characters is still challenging without context knowledge, which is usually handled by external language models [4].   
+
+> Corresponding author: changhun.kim@fau.de
+> Code: https://github.com/Kimchangheon/DRetHTR
+
+Fig. 1 . Decoder-only RetNet architecture that fuses the image and text in the Decoder Popular line-based approaches [5, 6] use a combination of Con-volutional Neural Networks (CNNs) and Recurrent Neural Networks (RNNs), trained through the Connectionist Temporal Classification (CTC) loss [7]. This enables alignment between input image and out-put character sequences without predefined character segmentation. However, limitations such as enforcing strict input-output sequence alignment and limiting the output lengths remain. This motivates the usage of sequence-to-sequence architectures, especially Trans-formers [8], allowing for unrestricted sequence length and the use of contextual cues. DTrOCR [9] was introduced as an effective decoder-only ar-chitecture for HTR, surpassing previous models by leveraging the pre-trained GPT-2 [10], which provides robust natural language un-derstanding. However, Transformer self-attention must form (and typically store) an N × N attention map for a sequence of length 
+
+N , making long sequences costly. In contrast, RNNs decode with constant per-step cost and long-sequence memory that grows only linearly with N , but they lack Transformer-style parallel training. Retentive Networks (RetNets) address this trade-off by combin-ing parallel training with a softmax-free retention mechanism that admits a recurrent form at inference [11]. This enables constant-cost decoding per step with linear long-sequence memory, while maintain-ing competitive performance, making RetNet an attractive foundation for efficient HTR. To harness these advantages for HTR, we introduce DRetHTR, a decoder-only RetNet tailored to line-level handwriting that achieves linear-time, linear-memory decoding. At the decoder input, DRetHTR employs an Attention-Retention Modality Fu-sion (ARMF) layer that aligns image and text tokens and provides a modality-partitioned interface : image-key interactions use stan-
+
+> arXiv:2602.17387v1 [cs.CV] 19 Feb 2026
+
+dard attention for alignment, while text-key interactions use causal retention with lower-triangular decay matrix D. To recover the local-to-global inductive bias typically provided by softmax attention, we propose layer-wise γ scaling for retention: shallow layers use smaller decay factors to emphasize local dependencies, while deeper layers increase the decay to aggregate broader context. Our ablation study confirms that this schedule matches a Transformer’s CER while preserving linear-time, linear-memory decoding. Under a unified evaluation protocol on IAM [12], RIMES [13], READ-2016 [14], and Bentham [15], DRetHTR delivers competitive accuracy with efficiency gains of 1.6–1.9 × faster inference and 38–42 % lower memory. The paper is structured as follows. Section 2 reviews related work on HTR architectures. Section 3 provides background on RetNet and its variants. Section 4 presents DRetHTR, including ARMF and layer-wise γ scaling. Section 5 reports quantitative and qualitative results, including ablations. Section 6 and Section 7 discuss limitations and future work, and Section 8 concludes. 
+
+2. RELATED WORK 
+
+In the early days of HTR, classical machine learning models such as support vector machines (SVM) and k-Nearest Neighbors (k-NN) were widely used. These methods relied on hand-crafted features extracted from geometric, statistical, or polar-transformed represen-tations of text images. Similarly, Farah et al. [16] use a parallel combination of k-NN, fuzzy k-NN, and neural networks to recog-nize Arabic words with a 96 % accuracy rate. Despite good single-character performance, these methods require tedious segmentation of line images into individual characters or strokes. HMMs use the sliding window technique to extract a sequence of feature vectors from an entire line of text without needing pre-segmented data. Plotz et al. [3] emphasized that HMMs perform implicit alignment between input features and target sequences us-ing the Viterbi decoding. The dominance of RNNs in handwriting recognition was enabled by the introduction of the CTC loss func-tion [7]. Moreover, MDLSTMs [17, 18], Neural Network Language Models [19], RWGD [20], and other approaches [21,22] have notably improved HTR performance. Recent developments introduced Transformer-based approaches, significantly enhancing parallel processing, scalability, and global dependency modeling. Notable methods include NRTR [23], fully Transformer-based architectures by Kang et al. [24], and hybrid Transformer-CTC models [25, 26]. For diplomatic transcription in low-data environments, Mayr et al. [27] made practical modifications to a Transformer encoder-decoder to bypass the length constraints of CTC. In parallel, several works report that pairing a Transformer decoder with a CTC auxiliary branch on the encoder—or leveraging CTC during decoding—improves data efficiency and recognition accuracy [28–30]. Large-scale pre-trained families, notably TrOCR and DTrOCR, leverage foundational Transformer language models and achieve state-of-the-art accuracy [9, 31]. TrOCR is an end-to-end encoder–decoder that couples a ViT/BEiT-style image encoder with a RoBERTa-initialized text Transformer decoder [31]. By contrast, DTrOCR pushes toward a decoder-only design: images are patch-tokenized and fed to a Transformer decoder initialized from GPT-2, which then autoregressively generates the transcription [9, 10]. This simplifica-tion exploits strong language priors and removes encoder–decoder cross-attention, yet it still inherits the quadratic cost of softmax self-attention at decoding time. 
+
+3. RETENTIVE NETWORKS – BACKGROUND 
+
+Transformer’s self-attention enables fully parallel training; during au-toregressive decoding, however, standard implementations maintain a Key-Value (KV) cache that grows linearly with generated length, motivating research on effective KV cache management architec-tures [32]. RetNet replaces the growing KV cache with a compact recurrent state. Its retention mechanism bridges attention and re-currence: training stays fully parallel, while inference runs as a constant-time recurrence. Retention pursues the same effect as self-attention by circumventing the softmax operation, which prohibits the compatible recurrent representation of self-attention, through the use of a temporal prior decay matrix. The intuitive mathematical compatibility between the parallel form and the recurrent form is explained in A. 
+
+From self-attention to retention Let X ∈ RN ×dmodel be a length-
+
+N sequence. A Transformer maps X to Q = XW Q, K =
+
+XW K , V = XW V with WQ, W K , W V ∈ Rdmodel ×dmodel and computes Attn( X) = softmax 
+
+ QK ⊤
+
+√dk
+
+
+
+V .
+
+Retention: parallel training, recurrent inference In the paral-lel (training) form , retention augments Q and K with per-position complex phases 
+
+Q = ( XW Q) ⊙ Θ, K = ( XW K ) ⊙ ¯Θ, V = XW V . (1) where ⊙ is element-wise multiplication, ¯Θ is the complex conjugate of Θ, and the n-th row of Θ is Θn = e i nθ for position index n ∈{1, . . . , N }. A lower-triangular decay matrix D ∈ RN ×N applies a causal, exponential prior 
+
+Dnm =
+
+(γ n−m, n ≥ m, 
+
+0, n < m, (2) with n the query index, m the key index, and γ ∈ (0 , 1) the decay factor. The parallel retention is then 
+
+Retention( X) = ( QK ⊤ ⊙ D) V. (3) Intuitively, D plays the role of a softmax-free, hand-crafted inductive bias that emphasizes recent context while remaining fully paralleliz-able for training over n = 1 , . . . , N .In the recurrent (inference) form , the same operator collapses to a constant-time update that no longer needs a growing KV cache. Defining a state Sn ∈ Cdmodel ×dmodel at step n,
+
+Sn = γS n−1 + k⊤ 
+
+> n
+
+vn, Retention( xn) = qnSn. (4) where qn, k n, v n are the n-th rows of Q, K, V . This yields O(1) per-token computation and O(N ) total memory for a length-N sequence, while Transformers require O(N ) per-token time from the growing KV cache and O(N 2) memory overall. A summary of parallelism, inference cost, and memory is shown in Tables 1 and 2. Compared with a KV-cached Transformer, RetNet’s recurrent form is more effective when the model width d is smaller than the sequence length 
+
+N .
+
+Data-dependent decay (Gated Retention) Gated Retention (gRet) [33] improves upon RetNet [11] by introducing a data-dependent gating mechanism instead of fixed gamma values over the different data samples. Based on the input data, the model can Table 1 . Comparison of model architectures by parallelization, infer-ence cost, memory complexity, and performance.                   
+
+> Architectures Parallelized training Inference Cost Long-Seq Memory Performance
+> Transformer ✓O(N)O(N2)✓✓
+> RetNet ✓O(1) O(N)✓✓
+> RNN ✗O(1) O(N)✓
+
+Table 2 . Computational costs of different inference forms. RetNet’s recurrent form is more effective than the KV-cached Transformer when model dimension d is less than sequence length n (derivation in Supplementary Materials, B).                       
+
+> Form Total Computations Asymptotic Complexity
+> Vanilla Form 2n2d+n2−1 + n(d−1) O(n2d)
+> Key-Value Cached 2dn + 2( n−1) O(nd )
+> Recurrent Form 2d2+d−1O(d2)
+
+automatically learn how the influence of preceding tokens decays as their distance increases, while preserving a recurrent representation. In gRet, γ and D are defined as follows: 
+
+γ = sigmoid  XW γ
+
+1/τ , Dnm =
+
+
+
+> n
+
+Y
+
+> i=m+1
+
+γi, n ≥ m, 
+
+0, n < m, 
+
+(5) Here, the temperature τ controls decay sharpness by pushing 
+
+γi toward 1: larger τ slows decay and lengthens memory, whereas smaller τ steepens decay and emphasizes local dependencies; fol-lowing YOCO [33] we use τ = 16 . As in RetNet, a sigmoid value 
+
+γ ∈ (0 , 1) is applied iteratively as a product over the intermediate positions between two tokens, determined by the distance |n − m|.This means that the closer the tokens are to each other, the stronger their dependency; conversely, the farther apart they are, the weaker the dependency becomes. 
+
+Bi-directional retention for vision RMT [34] incorporates spatial priors into Vision Transformers. RMT builds upon the original re-tention mechanism by first adapting it to a bi-directional form and subsequently enhancing it with a Manhattan distance-based spatial decay. BiRetention becomes suitable for images as it moves from unidirectional to bidirectional decay. BiRetention is expressed as: 
+
+BiRetention( X) =  QK ⊤ ⊙ DBi  V, DBi  
+
+> nm
+
+= γ |n−m|. (6) 
+
+4. METHODOLOGY 4.1. DRetHTR Architecture 
+
+Our proposed DRetHTR architecture builds upon the Retentive Net-work with a decoder-only architecture. A key adaptation involves fusing image and text embeddings within the decoder. For image–text fusion, only the parallel form is needed even during inference, so we reintroduce softmax to provide additional nonlinearity and effectively capture relationships among image tokens and between image and text tokens. For inter-text dependencies, we incorporate a tempo-ral prior with a layer-wise scaled gamma value instead of softmax, enabling linearizability during inference. 
+
+4.1.1. Image Embedding Module 
+
+Instead of the default patch embedding, we use EfficientNetV2 [35] as the image embedder to leverage its feature extraction capability. The ImageNet-1K pre-trained weights [36] are loaded, and the classifier part is removed so that only the feature map is extracted. During train-ing, dropout with a probability of 0.3 is applied after each activation function across all layers. The inclusion of dropout helps the model’s generalization to adapt to the handwriting domain by alleviating over-fitting to the features initially learned from ImageNet. Furthermore, to obtain more spatial information for sequence processing, the stride along width of the first convolutional layer is modified from 2 to 1. Once we obtain the 3-dimensional visual feature F with a shape corresponding to (cvisual , h visual , w visual ), where cvisual is the number of channels, and hvisual , w visual represent the height and width of the feature map, it is reshaped into (wvisual , c visual × hvisual ). Through a fully connected layer, it is then transformed into embedding E of shape (wvisual , d model ), where dmodel is a predefined input dimension of the decoder. Finally, the visual feature embedding is added with a learnable positional encoding, initialized with random weights. This visual feature embedding E is considered as a sequence of wvisual 
+
+image tokens, each of dimension dmodel .
+
+4.1.2. Text Embedding Module 
+
+The transcriptions of handwriting images are tokenized at character level. The character map consists of V = |C| unique characters in the dataset and the special tokens [SOS ], [EOS ], and [PAD ]. According to the maximum length of the transcriptions in the dataset, shorter text transcriptions are padded. Finally, the input text embeddings are represented as T of shape (max( ltext ), d model ), where max( ltext )
+
+is the fixed sequence length after padding, and dmodel is the model dimension. Sinusoidal positional encoding is added to the embed-dings to provide the model with information about the order of tokens within the sequence. 
+
+4.1.3. DRetHTR Decoder 
+
+After attaining the image and text tokens from their respective embed-ders, they are concatenated into a single sequence and passed to the RetNet decoder. The decoder consists of L identical layers stacked on each other. Unlike encoder-decoder architectures, this design omits cross-attention. Instead, modality fusion is achieved solely within the retention layer, adapted as Attention-Retention Modality Fusion (ARMF), a mixture of multi-head attention and multi-scale retention. The architecture comprises two sub-layers: ARMF and Position-wise Feed-Forward (PFF). Both sub-layers are surrounded by residual connections [37], with layer normalization [38] applied afterward. To accommodate residual connections, all sub-layers and embedding layers are designed to output the same dimension of dmodel . The PFF consists of two linear layers, GELU for smooth non-linearity and a dropout layer to improve generalization. 
+
+4.1.4. Attention-Retention Modality Fusion (ARMF) 
+
+The limitation of full self-attention over concatenated image–text tokens is a growing KV cache and incurring O(N ) per-token de-coding. In contrast, applying full retention to all tokens yields O(1) 
+
+decoding but weakens accuracy by limiting flexible image–text cou-pling. Therefore, we introduce ARMF , which resolves this by using retention only for the autoregressive text stream—where recurrence is needed—while keeping softmax attention for image–image and image–text interactions. Image keys and values (of length NI ) are (a) DRetHTR training process. (b) DRetHTR inference process. 
+
+Fig. 2 . Illustration of the DRetHTR training and inference processes: (a) training; (b) inference. ARMF mixes softmax (image) + retention (text) without breaking recurrence. computed once in parallel and text stream is processed recurrently, so cross-modal softmax does not introduce a KV cache that grows with 
+
+NT , preserving RetNet’s O(1) decoding with respect to generated text length. 
+
+The Parallel Representation of ARMF. As shown in Fig. 2, the ARMF layer is: 
+
+X =
+
+Ximg 
+
+Xtext 
+
+
+
+∈ RN ×dmodel , N = NI + NT
+
+Q = XW Q, K = XW K , V = XW V
+
+Dots = QK ⊤
+
+√dk
+
+=
+
+h
+
+Dots img ∈ RN ×NI Dots text ∈ RN ×NT
+
+i
+
+Dij =
+
+
+
+0, i < N I ,γ i−NI −j , i ≥ NI , j ≤ i − NI
+
+0, i ≥ NI , j > i − NI
+
+Ret =
+
+h
+
+softmax (Dots img ) Dots text ⊙ D
+
+i
+
+ARMF (X) = Ret V ∈ RN ×dmodel .
+
+(7) Where X is the given input sequence. NI and NT are the numbers of image and text tokens, respectively. WQ, W K , W V ∈
+
+Rdmodel ×dmodel are learnable weights. D ∈ RN ×NT is a dependency mask that prevents image queries from attending to text keys, while, for text queries, it applies causal, exponentially decayed dependence over text keys. Here, the reintroduced softmax does not prevent the recurrent representation, since computation for all image tokens in the inference phase is inherently parallelized. Softmax operates row-wise, so when a new text token qn attends the full image length Kimg and Vimg ,attention with softmax can be computed solely for qn, independent of previous tokens q1, q 2, . . . , q n−1. Therefore, we can seamlessly expand the recurrent representation for concatenated image-text input, maintaining compatibility without any collapse. 
+
+The Recurrent Representation of ARMF As shown in Figure 2b, ARMF can also be computed recurrently during inference. Unlike conventional retention mechanisms, qn must pay attention not only to the text tokens but also to the relevant image tokens. To achieve this, 
+
+Kimg and Vimg are cached for all L layers at once at the beginning of decoding, as defined below: For l ∈ [1 , 2, . . . , L ] : 
+
+K(l)img = X(l)img · W (l) 
+
+> K
+
+, V (l)img = X(l)img · W (l)
+
+> V
+
+(8) Using the cached Kimg and Vimg , text tokens can be generated autore-gressively in the same manner as conventional retention mechanisms. This process is defined as follows: 
+
+Sn = γ · Sn−1 + k⊤ 
+
+> n
+
+· vn
+
+otext ,n = qn · Sn ∈ R1×dmodel 
+
+oimg ,n = softmax qn · K⊤
+
+> img
+
+√dk
+
+!
+
+· Vimg 
+
+ARMF (xn) = otext ,n + oimg ,n , n = 1 , . . . , |x|
+
+(9) Thus, the per-step decoding cost is O(NI ) and does not grow with the generated text length NT ; in our setting where NI is fixed, this is effectively O(1) per step. Consequently, the total decoding complex-ity is reduced from O(N 2 
+
+> T
+
++ NI NT ) to O(NI NT ), which is linear in NT .
+
+4.2. Multi-Scale ARMF (MARMF) with Layer-wise Gamma Scal-ing 
+
+Instead of using a uniform γ across all layers as in the original Multi-scale Retention, our ARMF employs a layer-wise gamma scaling strategy. We define this process as follows: 
+
+γl,h = 1 − γsubtractor 
+
+
+
+1 − lL − 1
+
+
+
+− elinspace (log(1 /32) ,log(1 /512) ,H )h
+
+head h = ARMF ( X, γ l,h )
+
+Y = Concat (head 1, . . . , head H )MARMF( X) = Y W O
+
+(10) Here, γ increases from smaller values in lower layers to larger values in upper layers, so lower layers emphasize local details while deeper layers capture broader context. RetNet’s original block in-cludes GroupNorm and a Swish-style gating mechanism; gating has been argued to be beneficial in attention-style models by adding non-linearity and sparsity and mitigating attention-sink behavior [39]. In DRetHTR, we omit these components to keep the architecture min-imal and stable for line-level HTR, where the primary requirement is robust image–text alignment rather than maximizing long-range linguistic expressiveness. 
+
+Layer-wise gamma scaling design rationale This mechanism pro-vides explicit sequential priors by exponentially decaying the influ-ence of earlier tokens, thereby eliminating the need for softmax-based attention between text tokens. In RetNet, each retention head employs a decay factor γ that controls how much historical context is retained. By assigning smaller γ values to early decoder layers and progres-sively increasing them in deeper layers, we mimic the inductive bias 
+
+observed in standard Transformers—where shallow layers capture local dependencies, and deeper layers attend to broader context. Cru-cially, this multi-scale retention allows different layers to specialise in diverse-range dependencies (local, mid-range, and global) without incurring the quadratic cost of standard attention. The layer-wise decay acts as a structural prior for sequence modeling, compensating for the loss of flexible attention weights with a principled and efficient mechanism. 
+
+Softmax-free token interactions Practically, we retain softmax attention only for interactions that involve image tokens, so that visual features can be aligned and injected into the decoding context. All text-to-text dependencies are modeled with softmax-free, recurrent retention, enabling linear-time decoding with reduced memory over-head. Despite removing softmax from text modeling, our γ-scaled retention remains competitive with full Transformers and scales ro-bustly across datasets. 
+
+5. EVALUATION 5.1. IAM Handwriting Database 
+
+We conduct experiments on the line-level IAM dataset [12] using the standard Aachen split (IAM-A). Image sizes range from 100 × 45 to 
+
+2270 × 152 , with widths typically 4–15 × larger than heights. Text transcriptions range from 4 to 93 characters; about 90% of lines contain 30–60 characters, spanning 79 unique characters. 
+
+Fig. 3 . Examples of text length variability in the IAM dataset, from short words to long sentences. 
+
+Fig. 4 . Examples of the six augmentations applied to a handwriting image. 
+
+5.2. Synthetic Dataset for Pre-training 
+
+Our model was pre-trained with 17 million image-text pairs, pro-viding visual diversity for general HTR tasks. To achieve this, we extracted millions of lines from the CC100 dataset [40], a corpus of 2 billion English text chunks. We randomly truncated these lines to fit the distribution of lengths of the IAM-A train dataset, ranging from a minimum length of 4 to a maximum length of 93 characters. Any emojis or characters not found in the dataset were replaced with an empty string for compatibility. After preparing the text, we produced the corresponding synthetic images using 11,954 different handwrit-ing fonts from 1001 Fonts [41]. We assigned a randomly sampled font to each text line and rendered it as a text image in that font at a size of 100, which is close to the font size found in the IAM text lines. 
+
+5.3. Data Preprocessing and Augmentation 
+
+The handwriting text line images undergo a series of refined prepro-cessing steps. It starts by applying deslanting alone without contrast normalization. All images are resized to a constant height of 64 pixels while maintaining their original aspect ratio. However, this rescaling results in variable image widths. To perform mini-batch training, all resized images are padded with white pixels to have a uniform width of 2227 pixels. This padding is crucial, as it allows keeping the same input dimensions for the neural network. The final preprocessing step is the inversion of the pixels in the image, making the foreground (the handwritten stroke) close to 1 (white) and the background close to 0 (black). This enhances computational efficiency, increasing the promi-nence of features in the text while suppressing the numerical impact from the background. The dataset was augmented using six augmen-tation techniques, each applied with a 50% probability. These are random padding, squeezing & stretching, erosion, dilation, gaussian noise distortion, background noise. Examples of each augmentation are shown in Fig. 4. 
+
+5.4. Implementation Details 
+
+The base version of DRetHTR was configured with 12 layers, 768 hid-den sizes, 12 heads, and a Position-wise Feed-Forward Network (PFF) of 3072 hidden sizes. The small version uses 4 layers, 1024 hidden sizes, 8 heads, and a 4096 hidden-size PFF. An EfficientNetV2-S is employed as the image embedder, with a layer-wise scaled gamma decay for both the image and text sequential priors. The optimizer uses AdamW with 10 −3 weight decay and label smoothing ( ε = 0 .4). Table 3 . Comparison of CER and WER between DRetHTR SMALL 
+
+and RetHTR SMALL on different datasets. 
+
+DRetHTR SMALL RetHTR SMALL 
+
+Dataset CER ↓ WER ↓ CER ↓ WER ↓
+
+IAM 4.49 13.05 4.45 12.93 IAM + Synth 2.97 9.13 3.01 9.20 For the learning rate, we used a cosine annealing schedule ( 10 −4 to 
+
+10 −6 restarting every 30 epochs). We set dropout rates of 0.3 for retention and PFF layers and 0.1 for embeddings. The pre-training on synthetic data was run on 8× NVIDIA A100 (80 GB) GPUs with a batch size of 48, while fine-tuning used a batch size of 16. Single Precision (FP32) is used throughout training and inference, following the PyTorch defaults. To check the inference speed and memory consumption, we use a batch size of 128 with an A100 80GB GPU. The beam size for decoding is set to 10. Unless otherwise stated, all CER, speed, and memory results are averaged over five independent runs. 
+
+5.5. Ablation Studies 
+
+5.5.1. Decoder-Only vs Encoder–Decoder 
+
+We compare both of our Decoder-Only RetNet (DRetHTR) and En-coder–Decoder RetNet (RetHTR) architectures using a small 4-layer configuration. RetHTR also has a similarly configured 4-layer en-coder with a 3072 hidden-size PFF. Without pre-training, RetHTR achieves slightly better results, as can be seen in Table 3. However, DRetHTR outperforms RetHTR with pre-training on the synthetic dataset. This highlights the strength of the decoder-only approach when data-rich pre-training is used. Moreover, Table 4 shows that the decoder-only architecture is 3.2x faster and uses 22 % less mem-ory than the RetNet version. This aligns with the expectation that removing the encoder reduces computational cost. 
+
+Table 4. Model performance comparison showcasing mem-ory and time usage for beam-search decoding on the IAM test set (Aachen split). We refer to our Transformer baselines as TrHTR (encoder–decoder) and DTrHTR (decoder-only), which are matched reimplementations of RetHTR/DRetHTR and distinct from TrOCR/DTrOCR. Times correspond to a single pass over the full IAM test set with beam size 6 and batch size 128 on a single NVIDIA A100 80 GB GPU. 
+
+Model Parameters Memory ↓
+
+(beam=6) Time ↓
+
+(beam=6) 
+
+DRetHTR SMALL 73M 9GB 52.8s 
+
+RetHTR SMALL 136M 11GB 170.4s DTrHTR SMALL 73M 15GB 64.5s TrHTR SMALL 133M 16GB 189.4s 
+
+5.5.2. Impact of different CNN feature extractors 
+
+As shown in Table 5, the ResNet50, used as a feature extractor of Kang et al. [24], obtained a CER of 4.57 with pre-training and 14 .5
+
+without pre-training in our decoder-only architecture. The Shal-lowCNN, introduced by Wick et al. [42], outperformed the ResNet50 
+
+Table 5 . Comparison of CER (%) on IAM and IAM + Synth datasets for different CNN architectures. 
+
+CER (%) ↓
+
+CNN IAM IAM + Synth 
+
+ResNet50 14.5 4.57 ShallowCNN 30.0 4.23 EfficientNetV2-S 4.49 2.97 
+
+on our DRetHTR with a CER of 4.23 in case of pre-training. How-ever, EfficientNetV2-S excels both with and without synthetic pre-training. Trained only on IAM, it reaches a CER of 4.49 %, far below ResNet-50 (14.5 %) and the shallow CNN (30 %), suggesting its Mobile Inverted Bottleneck Convolution (MBConv) + Squeeze and Excitation (SE) [35] design captures stroke cues even in low-data regimes. With pre-training, EfficientNetV2-S drops to 2.97 %, again ahead of ResNet-50 (4.57 %) and the shallow CNN (4.23 %). In practice the backbone progressively expanding receptive fields yield multi-scale, character-specific features that are crisper than those from ResNet’s early, heavy down-sampling, making EfficientNetV2 a strong drop-in visual backbone for decoder-only HTR. 
+
+5.5.3. Sequential Priors for Text 
+
+In RetNet, the decay factor γ ∈ (0 , 1) imposes a sequential prior that removes the need for softmax. The original recommendation sets γ close to 1 with mild head-wise variation, favoring long-range memorization. gRet further introduces a data-dependent γ via a temperature term τ , which also tends to keep γ near 1. While this mechanism can learn how dependency strength should decay with distance, it still treats dependencies largely at a global scale, even when only local evidence is needed, and this global bias can hinder performance on text lines where locality is often sufficient. By contrast, a Transformer with softmax attention can flexibly emphasize either local or global dependencies as needed. In our Decoder-only Transformer for HTR (DTrHTR), we observe that at-tention often skews local rather than uniformly global. As shown in Fig. 5a, the first layer concentrates on near-diagonal entries (the token and its neighbors), while deeper layers progressively broaden their receptive field. To mirror this behavior with retention, we assign smaller γ in early decoder layers and increase it in deeper layers. The corresponding D-matrix visualizations for different γ values are provided in Fig. 5b. Table 6 summarizes several γ schedules and their CERs, evalu-ated on DRetHTR SMALL with an EfficientNetV2-S image embedder on the IAM Aachen split without the synthetic set, using γsubtractor =0.86 tuned on IAM-val. Simply lowering all heads’ γ to emphasize locality already improves over the original schedule. Introducing 
+
+layer-wise variation yields a further gain, matching the Transformer with softmax at 4.49 % CER while keeping text–text interactions 
+
+softmax-free .
+
+5.5.4. Sequential priors for Image 
+
+As introduced in [34], adding spatial priors in Vision Transformers can provide a boost in performance. The default implementation here applies softmax attention between image tokens with no spatial priors. For the CNN image embedder, the feature map is compressed into a single dimension. Thus, a simple Euclidean distance-based Table 6 . Ablation of γ scheduling on IAM (Aachen split) with an EfficientNetV2-S image encoder. All CER values are measured on the test set of Aachen split. Layer-wise γ scaling (last row) matches the Transformer’s CER (4.49 %) while retaining RetNet’s softmax-free token interactions, enabling linear-time, linear-memory decoding. See Fig. 5a for the local →global progression that motivates the schedule. 
+
+Strategy Gamma Value CER ↓
+
+Original γ = 1 − elinspace (log 1 /32 ,log 1 /512 ,H ) 4.65 
+
++ Data dependent gating γ = sigmoid( XW γ )1/τ 4.66 
+
++ Small Gamma Only γ = 1 − γsubtractor − elinspace (log 1 /32 ,log 1 /512 ,H ) 4.60 
+
++ Head-wise Gamma Scaling γh =  1 − γsubtractor − 132 
+
+ + h−1 
+
+> H−1
+
+γsubtractor 4.51 
+
++ Layer-wise Gamma Scaling γl = 1 − γsubtractor 
+
+
+
+1 − lL−1
+
+
+
+− elinspace (log(1 /32) ,log(1 /512) ,H ) 4.49 Transformer with Softmax – 4.49         
+
+> (a) Self-attention matrices of DTrHTR across decoder layers: shallow layers concentrate near the diagonal (local context), while deeper layers broaden to longer-range context.
+> (b) Retention decay matrices Dfor the corresponding γsettings, showing how smaller γemphasizes locality and larger γincreases memory, as in the proposed layer-wise schedule.
+
+Fig. 5 . Local-to-global progression and its retention mimic. (a) In the Transformer baseline (DTrHTR), attention naturally shifts from local to broader context with depth. (b) By assigning smaller γ to early decoder layers and larger γ to deeper layers, retention reproduces a similar progression without softmax for text–text interactions (cf. Table 6). prior is added bidirectionally. Notably, this adjustment yielded better performance with a substantially faster convergence speed. 
+
+Tokenization Table 8 compares Character-Level and Byte Pair Encoding (BPE) tokenization methods for both zero-shot and fine-tuned scenarios. BPE yields a better zero-shot performance for CER and WER than Character-Level tokenization. However, when fine-tuning with the IAM dataset, Character-level tokenization yields a better CER, while Byte Pair Encoding results in a better WER. 
+
+5.6. Qualitative error analysis on IAM 
+
+Figure 6 plots the three IAM lines with the highest CER after ex-cluding samples whose ground truth is faulty. Lines 1–2 are heavily cursive, with strokes so entangled that even humans struggle, so large errors are unsurprising. Line 3 is more telling: the image is entirely uppercase, yet DRetHTR writes the sentence mostly in lowercase, 
+
+Table 7 . Effect of Sequential Priors on image tokens. RetNet’s temporal decay is applied bidirectionally, and layer-wise gamma scaling is added to it. 
+
+Sequential Priors for Image CER ↓
+
+Priors only on text 4.49 + RetNet’s temporal decay on image 4.41 + Layer-wise gamma scaling on image 4.35 
+
+Table 8 . Comparison of Character Error Rate (CER) and Word Error Rate (WER) of DRetHTR BASE for different tokenization methods in both zero-shot and fine-tuned scenarios on the IAM test set (Aachen split). BPE uses a vocabulary size 500. BPE improves zero-shot via shorter sequences; character-level wins after fine-tuning due to precise character mapping in HTR. 
+
+Tokenization CER (%) ↓ WER (%) ↓
+
+Zero-shot Performance 
+
+Character-Level 11.72 42.09 BPE |V| = 500 9.12 19.87 
+
+Fine-tuned on IAM-A 
+
+Character-Level 2.26 6.55 BPE |V| = 500 2.36 4.81 
+
+capitalizing only the last two words. This shows the decoder isn’t just copying glyph shapes; it invokes RetNet’s language prior to produce the more natural casing for English prose. 
+
+5.7. Generalization beyond IAM 
+
+We evaluate DRetHTR on three additional benchmarks beyond IAM—RIMES (French) [13], READ-2016 (German) [14], and Bentham (English) [15]—using the same preprocessing and de-coding settings as IAM and without external lexicons (Table 9). RIMES consists of modern French administrative mail and faxes collected from over 1,300 volunteers between approximately 2006 and 2011. READ-2016 provides a historical German benchmark featuring archival council minutes from 1470–1805, characterized by significant background noise and Early Modern German script. Ben-tham comprises English philosophical manuscripts written primarily between 1760 and 1832, featuring the challenging, idiosyncratic handwriting of a single author. Together, these benchmarks test Fig. 6 . The three hardest IAM lines for DRetHTR (highest CER), excluding faulty labels. 
+
+Table 9 . Test CER (%) on four benchmarks. DRetHTR is pre-trained on the English synthetic dataset and fine-tuned separately on IAM, RIMES, READ-2016, and Bentham, and evaluated on the corresponding official test sets (IAM Aachen split, RIMES test set, READ-2016 test set, and Bentham test set). 
+
+Method IAM RIMES READ-2016 Bentham 
+
+DRetHTR BASE (ours) 2.26 1.81 4.21 3.46 
+
+DTrOCR [9] 2.38 – – –Diaz et al. [25] 2.75 1.99 – –Retsinas et al. [43] 4.22 2.70 – –Wang et al. [44] 6.40 2.70 – –Coquenet et al. [45] 4.45 1.91 3.59 –Abdallah et al. [46] 7.80 – – 7.10 model robustness against high writer variability, archival degradation, and centuries of linguistic evolution. As shown in Table 9, DRetHTR matches or surpasses strong CTC baselines on RIMES and Bentham, and remains competitive on READ-2016. This indicates that our decoder-only RetNet is not specialized to IAM but generalizes robustly across languages, scripts, and writing styles. 
+
+5.8. Comparative Inference Time and Memory Efficiency 
+
+The main benefits of RetNet are short inference time and low memory requirements. As seen in Table 10, in our implementation, RetNet outperforms Transformer in every evaluated aspect, including infer-ence time, memory consumption, and CER. With BPE, which makes the total tokens less than character-level tokenization, it achieves 1.5x faster inference. Additionally, compared to the TrOCR models 1, our approach provides better performance with fewer parameters but sig-nificantly improves the inference speed. The memory consumption is measured by the difference in peak allocated memory before and after decoding one batch. For the other settings, see Section 5.4. 
+
+5.9. Beam Search Efficiency of RetNet 
+
+Beam search magnifies decoding-time overheads because all decoder states must be maintained and updated for beam size of candidate  
+
+> 1This code version is from the Hugging Face documentation: https: //huggingface.co/docs/transformers/model_doc/trocr
+
+Fig. 7 . Beam-size scaling on the IAM Aachen test set: end-to-end inference time (left), peak memory (middle), and test CER (right) for DRetHTR vs. DTrHTR. DRetHTR scales more favorably with beam size because of fixed-size recurrent states, whereas KV-cached decoding incurs beam-dependent cache growth and cache reindexing after beam pruning. CER generally improves with larger beams up to B = 5 , after which it fluctuates slightly while decoding cost continues to grow with B.partial transcriptions in parallel. In a KV-cached Transformer, each beam stores a growing history of keys and values for every layer, and beam pruning requires reindexing these caches at every step. It also allocates temporary tensors when appending new keys/values, making decoding increasingly memory- and bandwidth-bound as beam size grows. In contrast, RetNet’s recurrent form maintains a fixed-size per-layer state for each beam and updates it in-place, avoiding sequence-length-dependent KV caches and reducing cache-management overhead. From an asymptotic FLOP perspective (Table 2), a KV-cached Transformer requires O(nd ) work per decoding step, whereas Ret-Net’s recurrent update scales as O(d2). This suggests that recurrent decoding is expected to be FLOP-favorable mainly when the gener-ated length n exceeds the model width d, as in long-sequence settings. However, wall-clock decoding on GPUs is not determined by FLOPs alone: cache growth, reindexing, and memory traffic can dominate runtime under beam search. Empirically, we find that RetNet remains faster and more memory efficient even on IAM, where sequences are relatively short ( n < d ), because the Transformer’s per-beam KV cache and its associated management overhead grow with both 
+
+n and beam size B, while RetNet’s recurrent state is fixed-size and beam-friendly. Table 12 summarizes the dominant per-layer storage for both approaches. For DTrHTR BASE (d=768 , H=12 ) and a representa-tive maximum decoding length N = 94 , RetNet stores B d 2/H 
+
+elements per layer, whereas the Transformer stores 2 B N d elements for KV caching. Figure 7 reports end-to-end latency and peak mem-ory across beam sizes on IAM Aachen split test set, showing that DRetHTR scales more favorably as the beam size increases. Finally, we observe that recognition accuracy typically saturates at moder-ate beams (around B=5 ), indicating that most remaining errors are dominated by visual/model ambiguity rather than insufficient search. We evaluate up to B=10 for consistency with TrOCR; however, in our setting the decoder uses character-level tokenization or a small BPE vocabulary of 500, which yields a more peaked next-token dis-tribution and a smaller branching factor than GPT-2 tokenization. Consequently, larger beams provide limited additional diversity and do not materially improve CER, while still increasing decoding cost. 
+
+6. LIMITATIONS 
+
+A central design choice in DRetHTR is to retain softmax only where it mediates image–text fusion, while modeling text–text dependen-Table 10 . Comparative inference efficiency of RetNet, Transformer, and TrOCR models on the IAM test set (Aachen split). All times and memory values are measured for decoding the full IAM test set with the specified tokenization and beam size, using batch size 128 on a single NVIDIA A100 80 GB GPU. 
+
+Model Params Tokenization Total Tokens Inference Time ↓ Memory ↓ CER ↓
+
+DRetHTR BASE 107M Character Level 442,832 123s 22.14GB 2.26 DTrHTR BASE 107M Character Level 442,832 233s 36.25GB 2.35 DRetHTR SMALL 73M Character Level 442,832 67s 14.5GB 2.97 
+
+DTrHTR SMALL 73M Character Level 442,832 110s 25.1GB 2.98 
+
+DRetHTR SMALL 74M BPE |V| = 500 49,574 44s 14.9GB 3.01 
+
+DTrHTR SMALL 74M BPE |V| = 500 49,574 69s 23.9GB 3.01 
+
+TROCR SMALL 62M BPE(GPT-2) |V| = 50 , 257 31,959 310s 9.1GB 4.22 
+
+TROCR BASE 334M BPE(GPT-2) |V| = 50 , 257 31,959 1717s 12.3GB 3.42 
+
+TROCR LARGE 558M BPE(GPT-2) |V| = 50 , 257 31,959 2725s 13.5GB 2.89 
+
+Table 11 . Comparison of HTR models: parameters, architecture, training data, external language model (LM) usage, and CER on the IAM test set (Aachen split). Abbrev.: Syn = synthetic data; Int. = internal data; Tx = Transformer; EN-V2 = EfficientNetV2. For architectures, L/h/d
+
+denote the number of blocks (layers), attention heads per block, and embedding dimension (e.g., L24 , h 16 , d 1024 means 24 layers, 16 heads, 1024-dim embeddings). 
+
+Model Params Encoder Decoder Train LM CER ↓
+
+DAN [44] ≈2.18M 23Conv+GRU GRU, L1/d256 IAM No 6.40 
+
+Wick et al. [42] ≈22M 3Conv + Tx, L3/h8/d512 Bidi Tx, L3/h8/d512 IAM No 5.67 
+
+Michael et al. [47] ≈1.8M 3Conv+3BLSTM, d256 Attn-LSTM, L1/d256 IAM No 4.87 
+
+HTR-VT [26] 53.5M ResNet18 + Tx-Enc, L4/h6/d768 CTC IAM No 4.7 
+
+Kang et al. [24] 100M Tx w/ResNet50, L4/h8/d1024 Tx, L4/h8/d1024 Syn+IAM No 4.67 
+
+VAN [45] 2.7M 18 VGG-style Conv 1×LSTM d256 + CTC IAM No 4.45 
+
+Puigcerver [5] ≈8.3M 5Conv 5×BiLSTM d256 + CTC IAM Yes 4.4 
+
+Bluche and Messina [22] 0.75M GCRNN, 6Conv+2BiLSTM, d128 CTC Syn+IAM No 3.20 
+
+TrOCR LARGE [31] 558M BEiT LARGE , L24/h16/d1024 RoBERTa LARGE , L12/h16/d1024 Syn+IAM No 2.89 
+
+Diaz et al. [25] 1.5M SelfAttn, L16/h4/d256 CTC Int.+IAM Yes 2.75 
+
+DTrOCR [9] 105M – GPT-2, L12/h12/d768 Syn+IAM No 2.38 
+
+DRetHTR SMALL (ours) 73M – RetNet w/EN-V2, L4/h8/d1024 IAM No 4.35 
+
+DRetHTR SMALL (ours) 73M – RetNet w/EN-V2, L4/h8/d1024 Syn+IAM No 2.97 
+
+DRetHTR BASE (ours) 107M – RetNet w/EN-V2, L12/h12/d768 Syn+IAM No 2.26 Table 12 . Dominant per-layer state size for beam-search decoding. 
+
+d is the model dimension, H the number of heads, N the decoded length, and B the beam size. Example element counts use d=768 ,
+
+H=12 , N ≈94 , and B=10 (DTrHTR BASE ). RetNet’s state is fixed-size in N , while KV caching scales linearly with N .       
+
+> Decoding Method Memory per Layer Number of Elements
+> Recurrent (RetNet) B d 2/H 0.49 MKV-Cached Transformer 2B N d 2.88 M
+
+cies via softmax-free retention with sequential priors. This design delivers clear efficiency gains and, in our experiments, even improves recognition accuracy relative to the decoder-only Transformer base-line (DTrHTR). In particular, DTrHTR normalizes each text query over a single key set that mixes image and text tokens, so visual evi-dence and linguistic context compete within one probability simplex. By contrast, DRetHTR effectively restricts softmax normalization for a text query to image keys, while handling text–text interactions separately through retention with a structured decay. The observed improvement of DRetHTR over DTrHTR is therefore consistent with the hypothesis that joint softmax over all keys can dilute the model’s ability to concentrate probability mass on the most relevant image tokens, especially under visually ambiguous handwriting. However, our experiments do not provide a controlled ablation that isolates (i) the presence of softmax itself, (ii) the scope of its normalization (all tokens vs. modality-specific subsets), and (iii) its interaction with retention-style sequential priors. In addition, our evaluation is centered on line-level benchmarks with moderate sequence lengths, and thus does not fully probe the regime n ≫ d where retentive decoding is expected to provide its strongest computational advantage over KV-cached attention. Finally, we do not systematically study alignment stability under very long au-toregressive decoding, where accumulated errors can lead to attention drift and degrade visual–text correspondence. 
+
+7. FUTURE WORK 
+
+A natural next step is to explicitly factorize the normalization for text queries, e.g., by computing separate attention distributions over image keys and text keys (or by using a gated mixture of the two), and then comparing these variants with and without retention-based sequential priors for text–text dependencies. Such an analysis could clarify whether DRetHTR benefits primarily from restricting cross-modal competition in a single softmax normalization, from the structured inductive bias introduced by layer-wise gamma scaling, or from the interaction between the two. Beyond this, future work should stress-test retentive decoding on substantially longer sequences to characterize efficiency and accuracy as n grows into the n ≫ d regime, and to quantify when recurrent decoding becomes decisively advantageous in practice. Mitigating attention drift for long-form decoding is another important direction, potentially via alignment-regularized training objectives, lightweight alignment correction during decoding, or decoding strategies that explicitly monitor and stabilize image–text correspondence over time. 
+
+8. CONCLUSION 
+
+We introduced DRetHTR, a linear-time, linear-memory decoder-only handwritten text recognition model based on Retentive Networks, and demonstrated that softmax-free retentive decoding can achieve Transformer-level accuracy while substantially reducing inference cost. Across four benchmarks, DRetHTR attains state-of-the-art and competitive CER under consistent training and decoding settings, while lowering end-to-end decoding latency and peak memory rela-tive to an equally-sized decoder-only Transformer baseline. These gains are enabled by two HTR-specific adaptations: ARMF preserves strong image–text alignment by retaining softmax attention at the modality interface while maintaining causal, recurrence-compatible text–text interactions; and layer-wise gamma scaling restores the local-to-global inductive bias of Transformers by progressively ex-panding the effective retention horizon with depth. Overall, our results establish retention as a practical alternative to KV-cached at-tention for HTR, combining competitive accuracy with substantially improved decoding efficiency. 
+
+9. REFERENCES 
+
+[1] Joe Nockels, Paul Gooding, Sarah Ames, and Melissa Terras, “Understanding the application of handwritten text recognition technology in heritage contexts: a systematic review of tran-skribus in published research,” Archival Science , vol. 22, no. 3, pp. 367–392, 2022. [2] Guenter Muehlberger et al., “Transforming scholarship in the archives through handwritten text recognition,” Journal of Documentation , vol. 75, no. 5, pp. 954–976, 2019. [3] Thomas Pl¨ otz and Gernot A. Fink, “Markov models for offline handwriting recognition: a survey,” International Journal on Document Analysis and Recognition (IJDAR) , vol. 12, no. 4, pp. 269–298, 2009. [4] Christopher Tensmeyer, Curtis Wigington, Brian Davis, Seth Stewart, Tony Martinez, and William Barrett, “Language model supervision for handwriting recognition model adaptation,” in 
+
+2018 16th International Conference on Frontiers in Handwrit-ing Recognition (ICFHR) , 2018, pp. 133–138. [5] Joan Puigcerver, “Are multidimensional recurrent layers really necessary for handwritten text recognition?,” in 2017 14th IAPR International Conference on Document Analysis and Recogni-tion (ICDAR) , 2017, vol. 01, pp. 67–72. [6] Patrick Doetsch, Michal Kozielski, and Hermann Ney, “Fast and robust training of recurrent neural networks for offline hand-writing recognition,” in 2014 14th International Conference on Frontiers in Handwriting Recognition (ICFHR) , 2014, pp. 279–284. [7] Alex Graves, Santiago Fern´ andez, Faustino Gomez, and J¨ urgen Schmidhuber, “Connectionist temporal classification: labelling unsegmented sequence data with recurrent neural networks,” in 
+
+International Conference on Machine Learning (ICML) . 2006, pp. 369–376, ACM. [8] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, and Illia Polo-sukhin, “Attention is all you need,” in Advances in Neural Information Processing Systems (NeurIPS) , 2017, vol. 30. [9] M Fujitake, “Dtrocr: Decoder-only transformer for optical character recognition,” in IEEE/CVF Winter Conference on Applications of Computer Vision (WACV) , 2024, pp. 8010–8020. [10] Alec Radford et al., “Language models are unsupervised multi-task learners,” 2019. [11] Yutao Sun, Li Dong, Shaohan Huang, Shuming Ma, Yuqing Xia, Jilong Xue, Jianyong Wang, and Furu Wei, “Retentive network: A successor to transformer for large language models,” 2023, preprint. [12] Urs-Viktor Marti and Horst Bunke, “The iam-database: an english sentence database for offline handwriting recognition,” 
+
+International Journal on Document Analysis and Recognition (IJDAR) , vol. 5, no. 1, pp. 39–46, 2002. [13] Emmanu` ele Grosicki, Matthieu Carr´ e, Edouard Geoffrois, Em-manuel Augustin, Franc ¸oise Preteux, and Ronaldo Messina, “Rimes, complete,” Mar. 2024. [14] A.H. Toselli, V. Romero, M. Villegas, E. Vidal, and J.A. S´ anchez, “Htr dataset icfhr 2016,” Feb. 2018. [15] Joan Andreu S´ anchez, “Bentham dataset r0,” Jan. 2016. [16] Nadir Farah, Labiba Souici, Lotfi Farah, and Mokhtar Sell-ami, “Arabic words recognition with classifiers combination: An application to literal amounts,” in Artificial Intelligence: Methodology, Systems, and Applications . 2004, pp. 420–429, Springer. [17] Alex Graves et al., “Offline handwriting recognition with multi-dimensional recurrent neural networks,” in Advances in Neural Information Processing Systems (NeurIPS) , 2008, vol. 21. [18] Th´ eodore Bluche, “Joint line segmentation and transcription for end-to-end handwritten paragraph recognition,” in Advances in Neural Information Processing Systems (NeurIPS) , 2016, pp. 838–846. [19] F. Zamora-Mart´ ınez, V. Frinken, S. Espa˜ na-Boquera, M.J. Castro-Bleda, A. Fischer, and H. Bunke, “Neural network language models for off-line handwriting recognition,” Pattern Recognition , vol. 47, no. 4, pp. 1642–1652, 2014. [20] Curtis Wigington, Seth Stewart, Brian Davis, Bill Barrett, Brian Price, and Scott Cohen, “Data augmentation for recognition of handwritten words and lines using a cnn-lstm network,” in 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR) , 2017, pp. 639–645. [21] Vu Pham, Th´ eodore Bluche, Christopher Kermorvant, and J´ erˆ ome Louradour, “Dropout improves recurrent neural net-works for handwriting recognition,” in 2014 14th International Conference on Frontiers in Handwriting Recognition (ICFHR) ,2014, pp. 285–290. [22] Th´ eodore Bluche and Ronaldo Messina, “Gated convolutional recurrent neural networks for multilingual handwriting recogni-tion,” in 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR) , 2017, pp. 646–651. [23] Fenfen Sheng, Zhineng Chen, and Bo Xu, “Nrtr: A no-recurrence sequence-to-sequence model for scene text recogni-tion,” in 2019 International Conference on Document Analysis and Recognition (ICDAR) , 2019, pp. 781–786. [24] Lei Kang, Pau Riba, Marc ¸al Rusi˜ nol, Alicia Forn´ es, and Mauri-cio Villegas, “Pay attention to what you read: Non-recurrent handwritten text-line recognition,” Pattern Recognition , vol. 129, pp. 108766, 2022. [25] Daniel Hernandez Diaz et al., “Rethinking text line recog-nition models,” arXiv preprint arXiv:2104.07787 , vol. abs/2104.07787, 2021, preprint. [26] Yuting Li, Dexiong Chen, Tinglong Tang, and Xi Shen, “Htr-vt: Handwritten text recognition with vision transformer,” Pattern Recognition , vol. 158, pp. 110967, 2025. [27] Martin Mayr, Katharina Neumeier, Julian Krenz, Simon B¨ urcky, Florian Kordon, Mathias Seuret, Jochen Z¨ ollner, Fei Wu, An-dreas Maier, and Vincent Christlein, “Data-efficient handwritten text recognition of diplomatic historical text,” Multimedia Tools and Applications , vol. 84, pp. 39107–39122, 2025. [28] Killian Barrere, Yann Soullard, Aur´ elie Lemaitre, and Bertrand Co¨ uasnon, “A light transformer-based architecture for handwrit-ten text recognition,” in International Workshop on Document Analysis Systems (DAS) , 2022, pp. 275–290. [29] Killian Barrere et al., “Training transformer architectures on few annotated data: an application to historical handwritten text recognition,” International Journal on Document Analysis and Recognition (IJDAR) , 2024. [30] Christoph Wick, Jochen Z¨ ollner, and Tobias Gr¨ uning, “Rescor-ing sequence-to-sequence models for text line recognition with ctc-prefixes,” in Document Analysis Systems (DAS 2022) , Sei-ichi Uchida, Elisa Barney, and V´ eronique Eglin, Eds. 2022, vol. 13237 of Lecture Notes in Computer Science , pp. 260–274, Springer, Cham. [31] Minghao Li, Tengchao Lv, Jingye Chen, Lei Cui, Yijuan Lu, Dinei Florencio, Cha Zhang, Zhoujun Li, and Furu Wei, “Trocr: Transformer-based optical character recognition with pre-trained models,” in AAAI Conference on Artificial Intelli-gence (AAAI) , 2023. [32] Haoyang Li, Yiming Li, Anxin Tian, Tianhao Tang, Zhanchao Xu, Xuejia Chen, Nicole Hu, Wei Dong, Qing Li, and Lei Chen, “A survey on large language model acceleration based on kv cache management,” Transactions on Machine Learning Research , 2025. [33] Yutao Sun, Li Dong, Yi Zhu, Shaohan Huang, Wenhui Wang, Shuming Ma, Quanlu Zhang, Jianyong Wang, and Furu Wei, “You only cache once: Decoder-decoder architectures for lan-guage models,” in Advances in Neural Information Processing Systems (NeurIPS) , 2024, pp. 7339–7361. [34] Qihang Fan, Huaibo Huang, Mingrui Chen, Hongmin Liu, and Ran He, “Rmt: Retentive networks meet vision transform-ers,” in IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , 2024, pp. 5641–5651. [35] Mingxing Tan and Quoc V. Le, “Efficientnetv2: Smaller models and faster training,” in International Conference on Machine Learning (ICML) , 2021. [36] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei, “Imagenet: A large-scale hierarchical image database,” in 2009 IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2009, pp. 248–255. [37] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun, “Deep residual learning for image recognition,” in IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , 2016, pp. 770–778. [38] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E. Hinton, “Layer normalization,” 2016, preprint. [39] Zihan Qiu, Zekun Wang, Bo Zheng, Zeyu Huang, Kaiyue Wen, Songlin Yang, Rui Men, Le Yu, Fei Huang, Suozhi Huang, Dayiheng Liu, Jingren Zhou, and Junyang Lin, “Gated atten-tion for large language models: Non-linearity, sparsity, and attention-sink-free,” in Advances in Neural Information Pro-cessing Systems (NeurIPS) , 2025. [40] Guillaume Wenzek, Marie-Anne Lachaux, Alexis Conneau, Vishrav Chaudhary, Francisco Guzm´ an, Armand Joulin, and Edouard Grave, “CCNet: Extracting high quality monolingual datasets from web crawl data,” in Proceedings of the Twelfth Language Resources and Evaluation Conference , 2020, pp. 4003–4012. [41] 1001 Fonts, “Handwritten fonts,” https://www.1001 fonts.com/handwritten-fonts.html , Accessed: 2024-12-3. [42] Christoph Wick, Jochen Z¨ ollner, and Tobias Gr¨ uning, “Trans-former for handwritten text recognition using bidirectional post-decoding,” in 2021 16th International Conference on Document Analysis and Recognition (ICDAR) , 2021, pp. 112–126. [43] George Retsinas, Giorgos Sfikas, Basilis Gatos, and Christophoros Nikou, “Best practices for handwritten text recognition,” in International Workshop on Document Analysis Systems (DAS) , 2022, pp. 247–259. [44] Tianwei Wang, Yuanzhi Zhu, Lianwen Jin, Canjie Luo, Xiaoxue Chen, Yaqiang Wu, Qianying Wang, and Mingxiang Cai, “De-coupled attention network for text recognition,” in Proceedings of the AAAI Conference on Artificial Intelligence , 2020, vol. 34, pp. 12216–12224. [45] Denis Coquenet, Clement Chatelain, and Thierry Paquet, “End-to-End Handwritten Paragraph Text Recognition Using a Vertical Attention Network ,” IEEE Transactions on Pattern Analysis & Machine Intelligence , vol. 45, no. 01, pp. 508–524, Jan. 2023. [46] Abdelrahman Abdallah, Mohamed Hamada, and Daniyar Nur-seitov, “Attention-based fully gated cnn–bgru for russian hand-written text,” Journal of Imaging , vol. 6, no. 12, 2020. [47] Johannes Michael, Roger Labahn, Tobias Gr¨ uning, and Jochen Z¨ ollner, “Evaluating sequence-to-sequence models for handwrit-ten text recognition,” International Conference on Document Analysis and Recognition (ICDAR) , pp. 1286–1293, 2019. Appendix A. Connection between RetNet’s Parallel and Recur-rent Representation 
+
+To better understand the connection between parallel and recurrent equations, consider the following matrix operations: 1. Defining Q, K⊤, and V :
+
+Q =
+
+q1
+
+q2
+
+q3
+
+ , K⊤ = k⊤ 
+
+> 1
+
+k⊤ 
+
+> 2
+
+k⊤
+
+> 3
+
+ , V =
+
+v1
+
+v2
+
+v3
+
+ .
+
+2. Computing QK ⊤ and defining D:
+
+QK ⊤ =
+
+
+
+q1k⊤ 
+
+> 1
+
+q1k⊤ 
+
+> 2
+
+q1k⊤
+
+> 3
+
+q2k⊤ 
+
+> 1
+
+q2k⊤ 
+
+> 2
+
+q2k⊤
+
+> 3
+
+q3k⊤ 
+
+> 1
+
+q3k⊤ 
+
+> 2
+
+q3k⊤
+
+> 3
+
+ , D =
+
+ 1 0 0
+
+γ 1 0
+
+γ2 γ 1
+
+ .
+
+3. Computing the Retention Matrix: 
+
+(QK ⊤) ⊙ D =
+
+
+
+q1k⊤ 
+
+> 1
+
+0 0
+
+γq 2k⊤ 
+
+> 1
+
+q2k⊤ 
+
+> 2
+
+0
+
+γ2q3k⊤ 
+
+> 1
+
+γq 3k⊤ 
+
+> 2
+
+q3k⊤
+
+> 3
+
+ .
+
+4. Final Retention Operation: 
+
+Y =
+
+
+
+q1(k⊤ 
+
+> 1
+
+v1)
+
+q2(γk ⊤ 
+
+> 1
+
+v1 + k⊤ 
+
+> 2
+
+v2)
+
+q3(γ2k⊤ 
+
+> 1
+
+v1 + γk ⊤ 
+
+> 2
+
+v2 + k⊤ 
+
+> 3
+
+v3)
+
+
+
+=
+
+q1S1
+
+q2S2
+
+q3S3
+
+ , where Sn = γS n−1 + k⊤ 
+
+> n
+
+vn.
+
+This formulation demonstrates the validity and flexibility of the retention mechanism. 
+
+Appendix B. Derivation of the Asymptotic Complexity for Each Inference Form Appendix B.1 Vanilla Form of Transformer Total Computation 
+
+yn = softmax 
+
+ 1
+
+√dk
+
+QnK⊤
+
+> n
+
+
+
+Vn
+
+• Where the shapes are: 
+
+Qn : ( n, d ), K⊤ 
+
+> n
+
+: ( d, n ), Vn : ( n, d )
+
+1. Compute QnK⊤
+
+> n
+
+Qn · K⊤ 
+
+> n
+
+=
+
+
+
+q11 q12 · · · q1d
+
+q21 q22 · · · q2d
+
+... ... . . . ...
+
+qn1 qn2 · · · qnd 
+
+ ×
+
+
+
+k11 k12 · · · k1n
+
+k21 k22 · · · k2n
+
+... ... . . . ...
+
+kd1 kd2 · · · kdn 
+
+
+
+• Total Computations: n×d×n = n2 ×d multiplications, 
+
+n2 − 1 additions. 2. Compute softmax 
+
+ 1√dk
+
+QnK⊤ 
+
+> n
+
+· Mask 
+
+
+
+× Vn:
+
+attn ×Vn =
+
+
+
+α11 α12 · · · α1n
+
+α21 α22 · · · α2n
+
+... ... . . . ...
+
+αn1 αn2 · · · αnn 
+
+ ×
+
+
+
+vn11 vn12 · · · vn1d
+
+vn21 vn22 · · · vn2d
+
+... ... . . . ...
+
+vnn 1 vnn 2 · · · vnnd 
+
+
+
+• Total Computations: n×d×n = n2 ×d multiplications, 
+
+n × (d − 1) additions. • Total Computations for Modified Form with Causal Mask:  2n2 × d + n2 − 1 + n × (d − 1)  ,
+
+which simplifies to O  n2 × d.• This process involves matrix multiplications across all 
+
+n tokens for each generation step, resulting in O  n2d
+
+complexity per step. The inefficiency is due to the causal nature of the decoder that redundantly recomputes the same attention weights for previously processed tokens. 
+
+Appendix B.2 Key-Value (KV) Cached Form 
+
+To address this inefficiency, instead of recomputing attention for all previous tokens, KV Caching stores the K and V from earlier steps. This modifies the computation as follows: 1 Key-Value Cached Form Total Computation :
+
+yn = softmax 
+
+ 1
+
+√dk
+
+qn
+
+h
+
+K⊤ 
+
+> n−1
+
+| k⊤
+
+> n
+
+i  Vn−1
+
+vn
+
+
+
+• Where the shapes are : qn : (1 , d )
+
+h
+
+K⊤ 
+
+> n−1
+
+| k⊤
+
+> n
+
+i
+
+: ( d, n ),
+
+ Vn−1
+
+vn
+
+
+
+: ( n, d )
+
+2. Detailed Computation :• Equation: qn
+
+K⊤ 
+
+> n−1
+
+| k⊤
+
+> n
+
+ = qnK⊤
+
+> n
+
+• Expanded as: 
+
+qn ·  K⊤ 
+
+> n−1
+
+| k⊤
+
+> n
+
+ =
+
+qn1 qn2 · · · qnd 
+
+ ×
+
+
+
+k11 k12 · · · k1n
+
+k21 k22 · · · k2n
+
+... ... . . . ...
+
+kd1 kd2 · · · kdn 
+
+
+
+• Total Computations: d × n multiplications, n − 1 addi-tions. 3. Output Computation :
+
+softmax 
+
+ 1
+
+√dk
+
+qn
+
+h
+
+K⊤ 
+
+> n−1
+
+| k⊤
+
+> n
+
+i  Vn−1
+
+vn
+
+
+
+= attn ×Vn
+
+• Expanded as: 
+
+attn ×Vn =
+
+α1 α2 · · · αn
+
+ ×
+
+
+
+vn11 vn12 · · · vn1d
+
+vn21 vn22 · · · vn2d
+
+... ... . . . ...
+
+vnn 1 vnn 2 · · · vnnd 
+
+
+
+• Total Computations: d × n multiplications, n − 1 addi-tions. • Total Computations for Key-Value Cached Form: 
+
+2dn + 2( n − 1) , which is O(nd ).
+
+• The overall computation is significantly reduced as it only computes the attention for the new token using cached keys and values. Appendix B.3 RetNet’s Recurrent Representation 
+
+RetNet can be considered a more advanced form of key-value caching. By discarding the softmax operation and introducing gamma decay, there is no longer a need to cache K and V separately. Instead, the network only needs to store the product k⊤ 
+
+> n
+
+vn at each step and update a recurrent state representation Sn by adding these values. 
+
+Sn = rS n−1 + k⊤ 
+
+> n
+
+vn
+
+yn = qnSn
+
+1. Equation: Sn = rS n−1 + k⊤ 
+
+> n
+
+vn
+
+• Matrix Multiplication: Simplifying to the last two di-mensions (d, 1) · (1 , d )
+
+k⊤ 
+
+> n
+
+· vn =
+
+
+
+kn1
+
+kn2
+
+...
+
+knd 
+
+ × vn1 vn2 · · · vnd 
+
+
+
+=
+
+
+
+kn1vn1 kn1vn2 · · · kn1vnd 
+
+kn2vn1 kn2vn2 · · · kn2vnd 
+
+... ... . . . ...
+
+knd vn1 knd vn2 · · · knd vnd 
+
+
+
+• Total Computations: d2 multiplications, 0 additions. 2. Equation: yn = qnSn
+
+• Matrix Multiplication: Simplifying to the last two di-mensions (1 , d ) · (d, d )
+
+yn = qn · Sn
+
+= qn1 qn2 · · · qnd 
+
+ ×
+
+
+
+Sn11 Sn12 · · · Sn1d
+
+Sn21 Sn22 · · · Sn2d
+
+... ... . . . ...
+
+Snd 1 Snd 2 · · · Sndd 
+
+
+
+= yn1 yn2 · · · ynd 
+
+
+
+• Total Computations: d2 multiplications, d − 1 additions. • Total Computations for Recurrent Form: 
+
+2d2 + d − 1, which is O(d2).
+
+Appendix C. Beam Search Decoding Memory Complexity Appendix C.1 KV-Cached Decoding Persistent Cache Storage: 
+
+For each layer, we store the keys and values for all decoded text tokens. Their typical shape is: Keys (or Values) : (B, H, N, d h)
+
+Thus, the memory required per cache (key or value) is: 
+
+Mpersistent, per cache = B × H × N × dh = B × N × d
+
+Since both keys and values are stored, the total persistent memory is: 
+
+M KV  
+
+> persistent
+
+= 2 BN d 
+
+Temporary Allocations during Concatenation: 
+
+At each decoding step t (where t ≤ N ), the model concatenates the new key and value (B, H, 1, d h) with the previous cache (B, H, t −
+
+1, d h), resulting in a new cache of shape (B, H, t, d h).The size of the temporary tensor created here for the concatena-tion is: 
+
+B × H × t × dh = B × t × d
+
+In the worst case (at t = N ), the temporary allocation per cache is: 
+
+Mtemp, per cache ≈ B × N × d
+
+The total temporary memory required for both keys and values is: 
+
+M KV temp ≈ 2BN d 
+
+Peak Memory Usage for KV-Cached Decoding: 
+
+The total peak memory, both persistent and temporary, can be ex-pressed as: 
+
+MKV ≈ M KV  
+
+> persistent
+
++ M KV temp ≈ 2BN d + 2 BN d = 4 BN d 
+
+Appendix C.2 Recurrent Decoding (RetNet Form) 
+
+Here, instead of storing the entire history, a fixed-size recurrent state is maintained. For each layer, assume the state has the shape: 
+
+(B, H, d h, d h)
+
+Thus, the memory per layer is: 
+
+MRecurrent ≈ B × H × dh × dh = B × H ×
+
+ dH
+
+2
+
+= B × d2
+
+H
+
+Note that this memory usage does not grow with N .

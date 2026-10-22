@@ -1,0 +1,278 @@
+Title: HTR-ConvText: Leveraging Convolution and Textual Information for Handwritten Text Recognition
+
+URL Source: https://arxiv.org/pdf/2512.05021v1
+
+Published Time: Fri, 05 Dec 2025 02:14:39 GMT
+
+Number of Pages: 27
+
+Markdown Content:
+# HTR-ConvText: Leveraging Convolution and Textual Information for Handwritten Text Recognition 
+
+Pham Thach Thanh Truc a,b , Dang Hoai Nam a,b ,Huynh Tong Dang Khoa a,b , Vo Nguyen Le Duy a,b, ∗
+
+> aUniversity of Information Technology, Ho Chi Minh City, Vietnam
+> bVietnam National University, Ho Chi Minh City, Vietnam
+
+Abstract 
+
+Handwritten Text Recognition remains challenging due to the limited data, high writing style variance, and scripts with complex diacritics. Ex-isting approaches, though partially address these issues, often struggle to generalize without massive synthetic data. To address these challenges, we propose HTR-ConvText, a model designed to capture fine-grained, stroke-level local features while preserving global contextual dependencies. In the feature extraction stage, we integrate a residual Convolutional Neural Net-work backbone with a MobileViT with Positional Encoding block. This en-ables the model to both capture structural patterns and learn subtle writing details. We then introduce the ConvText encoder, a hybrid architecture combining global context and local features within a hierarchical structure that reduces sequence length for improved efficiency. Additionally, an aux-iliary module injects textual context to mitigate the weakness of Connec-tionist Temporal Classification. Evaluation on IAM, READ2016, LAM and HANDS-VNOnDB demonstrate that our approach achieves improved per-formance and better generalization compared to existing methods, especially in scenarios with limited training samples and high handwriting diversity. 
+
+Keywords: 
+
+Handwritten Text Recognition, Vision Transformer, Vietnamese handwriting, Convolutional Neural Networks, Hierarchical Architecture, Textual Context 
+
+> ∗Corresponding author. E-mail: duyvnl@uit.edu.vn
+> arXiv:2512.05021v1 [cs.CV] 4 Dec 2025
+
+1. Introduction 
+
+Handwritten Text Recognition (HTR) aims to convert images of hand-written text into their corresponding character sequences. Similar to prior studies, we focus on line-level recognition, which provides a practical bal-ance between annotation cost and contextual information richness. How-ever, line-level handwriting recognition remains a challenging problem due to the significant variability in handwriting styles across individuals, writ-ing instruments, and scanning conditions, as well as the linguistic diversity and complexity of character systems, particularly in languages that include diacritics or compound characters. Traditional approaches based on Convolutional Neural Networks (CNNs) or Recurrent Neural Networks (RNNs) have achieved promising results, yet they often struggle to distinguish fine-grained stroke-level features, such as curvature, slant, pen connectivity, and stroke thickness. Furthermore, these systems predominantly rely on Connectionist Temporal Classification (CTC) for decoding, which inherently lacks textual context modeling capabilities. By predicting characters based solely on visual cues without leveraging se-mantic dependencies, CTC-based models often exhibit inferior accuracy com-pared to attention-based methods. More recently, Transformer-based and Vision Transformer (ViT) models have shown strong potential in capturing global dependencies. Nonetheless, they typically lack local inductive bias and require large-scale data to generalize well, making them less effective in low-resource HTR settings, which are common in many practical scenarios. To address these limitations, we propose HTR-ConvText, a novel archi-tecture designed to combine the strengths of detailed local representations and neighboring spatial context modeling. Specifically, the model employs a CNN-based feature extractor enhanced with an MVP Block at the net-work’s input stage, enabling it to capture subtle handwriting variations while maintaining strong generalization even on relatively small datasets such as IAM, READ, LAM, and HANDS-VNOnDB. Furthermore, we introduce the ConvText block, a hybrid module that combines Multi-Head Self-Attention (MHSA) for global dependencies with a simplified Depthwise Convolution for local context. This structure is integrated into a U-Net-like hierarchical architecture within the encoder, improving efficiency. We also incorporate a training-only Textual Context Module (TCM) which injects bidirectional textual priors into the visual encoder via an auxiliary loss, which mitigates the linguistic weakness of CTC-based models. 2Extensive experiments conducted on multiple benchmark datasets, in-cluding IAM, READ, LAM, and HANDS-VNOnDB, demonstrate that HTR-ConvText consistently outperforms state-of-the-art CNN and Transformer-based methods. Our main contributions are summarized as follows: 
+
+• We propose a compact hybrid CNN–ViT architecture capable of cap-turing both local and global features, allowing the model to recognize large-scale stroke patterns as well as fine-grained details such as dia-critics. 
+
+• We introduce the ConvText encoder, an architecture that unifies local feature and global context modeling. This design further incorporates a hierarchical structure, achieving significant computational efficiency, 
+
+• We develop the Textual Context Module, a training-only component that injects bidirectional textual priors into the visual encoder, address-ing the linguistic context weakness of CTC-based models. 
+
+• We conduct thorough cross-lingual evaluations on English, German, Italian and Vietnamese datasets, showing that our method outperforms existing state-of-the-art approaches. To ensure reproducibility, our im-plementation along with checkpoints and scripts is openly available at: https://github.com/DAIR-Group/HTR-ConvText 
+
+2. Related Work 
+
+Traditional Approaches to Handwritten Text Recognition. Historically, the field of HTR was first approached by statistical methods like Hidden Markov Models (HMMs) [1, 2], which relied on handcrafted features. While foundational, HMMs lacked discriminative power and struggled with long-range dependencies. The emergence of deep learning established a new trend, with Convolutional Recurrent Neural Networks (CRNNs) [3, 4, 5] becoming the standard. This pipeline uses a CNN for feature extraction, a Bidirec-tional LSTM (BLSTM) [6] to model sequential context, and is trained with the Connectionist Temporal Classification (CTC) loss [7] for alignment-free, end-to-end recognition. As an alternative, Encoder-Decoder (Seq2Seq) ar-chitectures [8, 9, 10] were introduced, using an attention mechanism [11] to autoregressively generate text. While capable of implicit language modeling, these models are often computationally more expensive than their CTC-based counterparts. More recently, Fully Convolutional Networks (FCNs) 3[12, 13, 14] were proposed to replace the sequential bottlenecks of RNNs. Architectures like OrigamiNet [13] and VAN [12] use depth-wise separable convolutions [15] and gating mechanisms (GateBlocks) [16] to achieve high parallelization and state-of-the-art results. However, this architectural trade-off may inherently limit their ability to model long-range contextual relation-ships. 
+
+Transformer-based Models for Handwritten Text Recognition. The success of the Transformer architecture [17] in sequence modeling has motivated its use in HTR as a replacement for RNNs. However, standard Vision Trans-former models [18] lack the inductive bias of CNNs, necessitating extensive pre-training on large-scale datasets [19, 20] to achieve competitive perfor-mance. This dependency is exemplified by data-hungry models like TrOCR [19], which integrates pre-trained BEiT [21] and RoBERTa [22] models and requires over 700 million synthetic images, and DTrOCR [20], a decoder-only model scaled with nearly 2 billion images. In contrast, research on data-efficient Transformers like DeiT [23] and DropKey [24] has focused on mid-sized datasets, though their direct application to pre-training-free HTR remains challenging. A third approach integrates Transformers into estab-lished HTR pipelines by replacing the BLSTM layers of a CRNN with a Transformer encoder, while retaining the Connectionist Temporal Classifica-tion loss. A prominent example is HTR-VT [25], which uses a CNN feature extractor to feed a Transformer encoder and is optimized with CTC, suc-cessfully achieving competitive performance on small datasets without pre-training. 
+
+Hybrid Attention and Convolution Blocks. A highly influential trend, originating from Automatic Speech Recognition (ASR), has been to unify self-attention and convolution into a single, hybrid encoder block [26]. This architecture aims to achieve the "best of both worlds" by augmenting the Transformer’s global dependency modeling with the strong local inductive bias of a CNN. The key precedent is the Conformer architecture [26], which established the state-of-the-art in ASR by inserting a 1D convolutional mod-ule into the standard Transformer block. This success spurred further re-search into computational efficiency, leading to models like Squeezeformer [27], which uses a temporal U-Net structure, and Zipformer [28], which in-troduces a highly efficient scaling Zip-block. Despite this hybrid architecture becoming the de facto standard in speech processing, its application to the 4Figure 1: Overview of the HTR-ConvText architecture. The model consists of a CNN-based feature extractor (MVP Block), a hierarchical hybrid encoder (ConvText Encoder), and a training-only Textual Context Module (TCM). 
+
+visual and spatial challenges of HTR remains largely unaddressed. This leaves a clear research gap in applying these powerful models to capture the fine-grained, stroke-level features of handwritten text. 
+
+3. Method 
+
+We propose HTR-ConvText, a handwritten text recognition model that combines local convolutional bias with global self-attention, and augments training with a Textual Context Module to help guide training (illustrated in Fig. 1). Given a normalized line image I ∈ RH×W , a CNN extractor maps I to a 2-D feature map F ∈ RH′×W ′
+
+with down-sampling factors (Sh, S w) induced by the convolutional strides. We flatten F row-wise into a sequence X = {xi}Li=1 
+
+with L = HW SH SW , x i ∈ R.A multi-head self-attention and convolutional block then process X into context-aware tokens ˆX; which are projected to per-step character logits 5and decoded with a CTC head. We further employ a training-only Textual Context Module that conditions the encoder on left/right textual context and supplies an auxiliary cross-entropy objective. At inference the TCM is omitted, and the model is optimized using the Connectionist Temporal Classification loss and the Cross-entropy Loss. 
+
+3.1. MVP Block 
+
+To extract features that effectively synthesize both local and global (fine-grained) information, we introduce a novel feature extractor, termed the Mo-bileViT [29] with Positional Encoding (MVP) Block, built upon the synergy of ResNet-18 and the MobileViT Block (MV Block). We maintain the archi-tecture of the initial ResNet-18 almost entirely to fully leverage the inherent strengths of its stacked CNN layers for robust local feature extraction and hierarchical representation learning. Crucially, MobileViT Blocks are strate-gically integrated, interleaved within the final blocks of the ResNet backbone, as shown in Fig. 2. This intelligent hybrid structure capitalizes on the comple-mentary nature of local features from the CNN and global context captured by the Vision Transformer (ViT) layers, allowing the model to effectively capture the interplay between local details and global scene context, thereby yielding richer and more expressive feature representations. Furthermore, to enable the transformed patches to effectively encode and utilize their relative spatial positions, a mechanism essential for the model’s sequence learning and spatial awareness, Positional Encodings (PE) must be incorporated. Since the MobileViT block employs Fold and Unfold operations (which transform 2D feature maps to sequences and back), conventional trigonometric-based PEs are suboptimal for this specific structure. Therefore, we integrate a more robust mechanism: the Conditional Positional Encoding [30] (CPE), which is specifically designed to handle features with spatial dimensions, thus facil-itating the model’s learning process. As demonstrated in our experimental validation, the inclusion of CPE significantly enhances the efficiency and ef-fectiveness of the feature extraction process. In conclusion, the MVP Block represents an efficient and powerful architecture. 
+
+3.2. ConvText Encoder 
+
+Handwritten text lines exhibit strong short-range structure along the writing flow (strokes, ligatures) and long-range dependencies across char-acters and words. Our encoder therefore interleaves (i) a multi-head self-attention and (ii) a depthwise-separable convolutions along the sequence axis. 6Figure 2: The MVP Block architecture, integrating MobileViT blocks with a Conditional Positional Encoding (CPE) into the ResNet backbone. 
+
+We design a hybrid encoder block that couples global self-attention with a lightweight 1-D convolutional module, framed by two half-step feed-forward networks (FFNs). The block adopts post-LayerNorm after every residual update and uses a learnable residual scaling per sub-module, along with stochastic depth for regularization. 
+
+3.2.1. Hybrid ConvText Block 
+
+Drawing inspiration from Conformer, we integrate convolution to capture fine-grained local spatial context alongside the global scope of self-attention. However, we diverge from the Conformer’s Macaron architecture. Instead, we adopt a sequential structure where a Convolution module and a second Feed-Forward Network are placed after the standard Transformer encoder layers, as illustrated in Fig. 3. This effectively intertwines local and global feature extraction without the structural redundancy of the Macaron design. 
+
+Relative Positional Encoding. Unlike HTR-VT, which utilizes fixed si-nusoidal positional encodings, we employ relative sinusoidal positional en-codings [31]. This choice is critical for our architecture; since our encoder employs a U-Net-like hierarchical structure ( §3.2.2), the sequence length L
+
+7Figure 3: Structure of the Hybrid ConvText Block. It sequentially interleaves Multi-Head Self-Attention (MHSA), a Feed-Forward Network (FFN), a Depthwise Convolution, and a final FFN. 
+
+changes across stages. Relative encodings ensure the attention mechanism remains robust to these length variations and generalizes better to text lines of arbitrary width. 
+
+Streamlined Convolution Module. To capture fine-grained local features (such as diacritics or stroke connections), we incorporate a convolutional sub-block. We optimize the standard Conformer design by replacing the computationally expensive Gated Linear Unit (GLU) with a SiLU activation and utilizing a stack of depthwise-separable convolutions. This reduction in parameters improves training stability on smaller datasets without sacrificing the nonlinearity required for local feature modeling. 
+
+3.2.2. Hierarchical U-Net Structure 
+
+The application of standard Transformers to HTR is constrained by the 
+
+O(L2) computational cost of the self-attention mechanism, particularly for long text lines. To address this, we organize the ConvText blocks into a hierarchical U-Net structure. 8The encoder begins by processing the input feature sequence X at its orig-inal resolution ( L = 128 ). It then temporally downsamples the sequence by a factor of two ( L′ = 64 ) using a strided 1D convolution. The majority of the depth (4 blocks) is applied in this compressed latent space, effectively quar-tering the computational cost of the attention mechanism while increasing the effective receptive field. Finally, the sequence is upsampled via nearest-neighbor interpolation and fused with the stored high-resolution features via a residual connection. This allows the model to recover fine-grained spatial details essential for predicting character boundaries. 
+
+3.2.3. Formal Definition 
+
+Mathematically, this means one ConvText block maps x0 ∈ RL×D to 
+
+y ∈ RL×D as: 
+
+x1 = LayerNorm (x0 + LayerScale attn (DP (MHSA (x0)))) ,x2 = LayerNorm (x1 + 12 LayerScale ffn 1(DP (FFN (x1)))) ,x3 = LayerNorm (x2 + LayerScale conv (DP (Conv (x2)))) ,y = LayerNorm (x3 + 12 LayerScale ffn 2(DP (FFN (x3)))) .
+
+(1) where LayerNorm denotes Layer Normalization, and LayerScale repre-sents a learnable per-channel scaling factor applied to the residual branches. 
+
+F F N , M HSA , DP and Conv refer to the Feed-Forward Network, Multi-Head Self-Attention, Drop Path and Convolution modules, respectively. 
+
+3.3. Textual Context Module 
+
+Standard CTC-based recognition operates under a conditional indepen-dence assumption, often leading to predictions that lack linguistic coherence. To address this, we introduce a Textual Context Module, a training-only auxiliary branch designed to inject explicit linguistic priors into the visual encoder. 
+
+3.3.1. Context Formulation 
+
+Let Y = ( c1, . . . , c T ) denote the ground-truth character sequence. For every target character ci, we construct a local bidirectional context compris-ing a left context window Sli = ( ci−k, . . . , c i−1) and a right context window 
+
+Sri = ( ci+1 , . . . , c i+k), where k is the context window size. These character sequences are embedded and processed via a lightweight 1D convolutional layer followed by a linear projection to aggregate local tex-tual information. To distinguish the directional provenance of the context, 9Figure 4: The Textual Context Module (TCM). It generates left and right linguistic context vectors and fuses them with visual features via cross-attention. This module is used only during training. 
+
+we add learnable directional biases bl and br, producing the final textual context vectors ˜qli and ˜qri :
+
+˜qli = LayerNorm (Wtqli + bl), ˜qri = LayerNorm (Wtqri + br) (2) where Wt ∈ RD×D is a learnable projection matrix and LayerNorm de-notes Layer Normalization. To align this linguistic knowledge with the visual representation, we em-ploy a Cross-Attention mechanism. The resulting attention-weighted features are fused with the original visual tokens via element-wise multiplication (de-noted as ⊗ in Fig. 4) to produce the final conditioned representations, zli and 
+
+zri . A shared linear classifier Wc then maps these representations to logits over the vocabulary: 
+
+˜yli = Wczli + bc, ˜yri = Wczri + bc (3) 
+
+3.3.2. Auxiliary Objective 
+
+This module creates an auxiliary task: predicting the center character ci
+
+using only the visual features and the surrounding text. This guides the en-coder to learn visual representations that are consistent with their linguistic context. 10 Crucially, the TCM is utilized only during training. At inference time, the module is discarded, and the model relies solely on the enhanced features of the ConvText encoder. This design allows HTR-ConvText to benefit from linguistic guidance without incurring the latency penalties associated with autoregressive decoders. 
+
+3.3.3. Optimization Objective 
+
+During training, the optimization objective is to minimize the total loss L,which comprises the primary LCT C from the main encoder and the auxiliary 
+
+LT CM from our Textual Context Module. The LCT C is the standard Connectionist Temporal Classification loss ap-plied to the final output of the ConvText encoder. 
+
+Lctc = CT CLoss ( ˜Yctc , Y ) (4) The LT CM is an auxiliary cross-entropy loss computed from the condi-tioned representations. We compute the per-position cross-entropy from both left and right directions, denoted as lli and lri respectively. These losses are aggregated using a weighted average to handle variable sequence lengths and potential focal emphasis: 
+
+lli = CE (˜ yli, ci ), lri = CE (˜ yri , ci )
+
+LT CM = 12 PTj=1 wjTX
+
+> i=1
+
+(lli + lri )wi
+
+(5) The total objective LT CM is then calculated as the weighted mean of these bidirectional losses. In this formulation, wi represents a scalar importance weight (derived from the padding mask, where wi = 1 for valid characters and wi = 0 for padding tokens). The denominator 2 PTj=1 wj serves as a normalization factor, ensuring that the loss magnitude remains invariant to the sequence length or the batch size. The full optimization objective is a weighted sum of these two losses: 
+
+L = λCT C LCT C + λT CM LT CM (6) where λCT C and λT CM are scalar hyperparameters to balance the two objectives. Gradients from LT CM flow through the cross-attention into the encoder, encouraging text-consistent visual representations. At inference, the TCM is omitted, and decoding uses only the ConvText encoder and the CTC head, incurring no additional latency. 11 4. Experiments 
+
+In this section, we evaluate the performance of our model on the line-level text recognition task. The experimental results demonstrate that our ap-proach achieves state-of-the-art performance on the LAM and IAM datasets, while also performing competitively with other leading models on the READ dataset. Notably, our model attains strong results without relying on pre-training, synthetic data, or any additional pre-/post-processing steps. 
+
+4.1. Implementation Details 
+
+The HTR-ConvText encoder consists of 8 stacked ConvText blocks, each containing a multi-head self-attention (MHSA) module with 8 heads, a feed-forward network (FFN) with an expansion ratio of 4.0, and an interleaved depthwise separable convolutional module for local feature aggregation. Each block adopts post-LayerNorm and LayerScale initialization with a scale of 1e-5. The embedding dimension is fixed to 512, and positional encoding follows a fixed 1D relative position bias scheme. All experiments use images resized to 512 ×64, with grayscale normalization and a data augmentation pipeline including random dilation/erosion (kernel ≤ 2), color jitter, elastic distortion, and geometric transformations applied with a probability of 0.5. The model is optimized using AdamW with a maximum learning rate of 1 × 10 −3, 1,000 warm-up iterations, and cosine decay scheduling. A weight decay of 0.05 and EMA smoothing (decay = 0.9999) are applied to stabilize training. The batch size is 64 for training and 8 for validation. Trainings are performed on either GPU H100 or A100. 
+
+4.2. Dataset and evaluation metrics 
+
+We evaluated the performance of our model on four handwritten text recognition datasets: IAM [32], READ2016 [33], LAM [34], and the Viet-namese dataset HANDS-VNOnDB [35]. Among them, READ2016 and IAM are well-established benchmarks, while LAM represents the largest pub-licly available line-level dataset. Crucially, we include HANDS-VNOnDB to specifically evaluate the model’s robustness in handling complex diacritical marks. Detailed information about these datasets is summarized in Tab. 1. It is important to note that all reported results correspond to the test set, ob-tained using the model that achieved the best performance on the respective validation sets. 12 Table 1: Summary of datasets used for evaluation. 
+
+Dataset Training Validation Test Language Charset IAM 6,482 976 2,915 English 79 READ2016 8,349 1,040 1,138 German 89 LAM 19,830 2,470 3,523 Italian 89 HANDS-VNOnDB 4,433 1,229 1,634 Vietnamese 161 
+
+LAM Dataset. The Ludovico Antonio Muratori (LAM) dataset constitutes a large-scale corpus for Handwritten Text Recognition (HTR), focusing on Ital-ian historical manuscripts. As the largest available line-level HTR dataset, LAM comprises 25,823 text lines and features a lexicon of over 23,000 unique words. The standard split utilizes 19,830 lines for training, 2,470 for vali-dation, and 3,523 for testing, with a complete character set of 90 symbols, including ’#’. ’#’ is a placeholder to manage transcription ambiguity, il-legible text, special symbols, and struck-through words. Being the current largest HTR line-level dataset, LAM serves as a rigorous benchmark for eval-uating model performance on long-period historical documents. 
+
+READ2016 Dataset. The READ2016 dataset originates from the ICFHR 2016 competition on HTR, sourced from the Early Modern German Rat-sprotokolle collection (READ project). The dataset provides rich annota-tions at the page, paragraph, and line levels. For line-level HTR, the dataset is partitioned into 8,349 training images, 1,040 validation images, and 1,138 test images, all sharing a total character set size of 89. As a key bench-mark, READ2016 is primarily utilized for assessing HTR model capabilities on historical, complex European handwriting. 
+
+IAM Dataset. The IAM dataset is a widely adopted benchmark for offline HTR, specifically focusing on modern English. It aggregates handwritten transcriptions from the LOB corpus, contributed by 657 distinct writers across 1,539 scanned pages. Following the common research standard, the line-level subset is split into 6,482 lines for training, 976 lines for validation, and 2,915 lines for testing. All images are provided in grayscale at 300 dpi. Our study utilizes this standard line-level partition of IAM (as detailed in Tab. 1) to compare model performance against established state-of-the-art results for multi-writer modern handwriting recognition. 13 HANDS-VNOnDB Dataset. To evaluate our model’s robustness on com-plex diacritics, we utilize the HANDS-VNOnDB dataset, originally collected for the ICFHR 2018 competition on Vietnamese Online Handwritten Text Recognition. Although originating from online pen-tip trajectories, we utilize the rendered offline images to test visual recognition capabilities. Vietnamese script poses a unique challenge due to its high density of stacked diacritical marks (tones), which require fine-grained stroke-level feature extraction to distinguish correctly. The dataset contains handwritten paragraphs produced by university students, offering a diverse range of modern writing styles. We employ a line-level split to assess the model’s ability to capture subtle visual details that differentiate tonal markers. 
+
+4.3. Evaluation Metrics 
+
+To evaluate the performance of our model, we employ the standard met-rics for handwritten text recognition: Character Error Rate (CER) and Word Error Rate (WER). Character Error Rate (CER) is defined as the Levenshtein distance be-tween the predicted character sequence and the ground truth. It is calculated as the sum of character substitutions ( Sc), insertions ( Ic), and deletions ( Dc)required to transform the prediction into the ground truth, normalized by the total number of characters in the ground truth ( Nc). Formally, CER is expressed as: CER = Sc + Ic + Dc
+
+Nc
+
+(7) Word Error Rate (WER) is computed similarly but at the word level. It represents the sum of word substitutions ( Sw), insertions ( Iw), and deletions (Dw) required to transform the predicted word sequence into the ground truth, divided by the total number of words in the ground truth ( Nw). It is defined as: WER = Sw + Iw + Dw
+
+Nw
+
+(8) 
+
+4.4. Comparison with state-of-the-art approaches 
+
+We present a comprehensive performance comparison of our proposed HTR-ConvText model against state-of-the-art approaches across three widely used public benchmarks: IAM, LAM, and READ2016. The evaluation is primarily based on the Character Error Rate (CER) and Word Error Rate 14 Table 2: Comparison of Performance (CER, WER) with State-of-the-Art Approaches on the IAM Test Set. Our method achieves the new SOTA with the lowest CER/WER.SOTA results are cited or re-implemented from the HTR-VT paper. 
+
+Method Test CER Test WER Param. 
+
+GFCN 8.0 28.6 1.4M GFCN ∗ 8.0 28.6 1.4M CRNN ∗ 7.8 27.8 18.2M CNN + BLSTM 8.3 24.9 9.3M CNN + BLSTM ∗ 7.7 26.3 9.3M OrigamiNet-12 5.3 - 39.0M OrigamiNet-12 ∗ 6.0 22.3 39.0M OrigamiNet-18 4.8 - 77.1M OrigamiNet-18 ∗ 6.6 24.2 77.1M OrigamiNet-24 4.8 - 115.3M OrigamiNet-24 ∗ 6.5 23.9 115.3M VAN 5.0 16.3 2.7M ViT 32.4 68.5 37.0M ViT + DropKey 34.2 70.1 37.0M DeiT 32.0 68.4 6.0M Transformer § 4.7 15.5 54.7M Transformer ∗ 7.6 24.5 54.7M TrOCR ∗ 7.3 37.5 385.0M HTR-VT 4.7 14.9 53.5M Ours 4.0 12.9 65.9M   
+
+> §reports results using extra training data.
+> ∗indicate re-implementations by LAM.
+
+(WER). The results are summarized in Tab. 2, Tab. 3, and Tab. 4. To evalu-ate the efficacy of our proposed architecture, we conducted a comprehensive comparison against existing state-of-the-art (SOTA) methods on three stan-dard handwritten text recognition benchmarks: IAM, LAM, and READ2016. The quantitative results, primarily measured by Character Error Rate (CER) and Word Error Rate (WER), are presented in Tabs. 2, 3, and 4. Across all evaluated scenarios, the proposed HTR-ConvText consistently outperforms competing approaches, establishing new benchmarks for recognition accu-racy. 15 Table 3: Performance Comparison on the LAM Dataset. Our approach significantly out-performs competing methods, particularly transformer-based models.SOTA results are cited or re-implemented from the HTR-VT paper. 
+
+Method Test CER Test WER Param. 
+
+CNN + BLSTM 5.8 18.4 9.3M GFCN ∗ 5.2 18.5 1.4M CRNN ∗ 3.8 12.9 18.2M OrigamiNet-12 ∗ 3.1 11.2 39.0M OrigamiNet-18 ∗ 3.1 11.1 77.1M OrigamiNet-24 ∗ 3.0 11.0 115.3M ViT 6.1 19.1 37M ViT + DropKey 5.7 16.5 37M DeiT 5.9 18.7 6M Transformer § 10.2 22.0 54.7M TrOCR ∗§ 3.6 11.6 385.0M HTR-VT 2.8 7.4 53.5M Ours 2.7 7.0 65.9M     
+
+> §reports results using extra training data.
+> ∗indicates re-implementations by LAM. Table 4: Performance Comparison on the READ2016 Test Set. Our approach yields comparable results to the current state-of-the-art on this dataset.SOTA results are cited or re-implemented from the HTR-VT paper.
+
+Method Test CER Test WER Param. 
+
+CNN + RNN 5.1 21.1 -CNN + BLSTM 4.7 - -FCN 4.6 21.1 19.2M VAN 4.1 16.3 2.7M ViT 8.5 29.6 37M ViT + DropKey 8.1 26.4 37M DeiT 8.4 28.7 6M DAN 4.1 17.6 7.6M HTR-VT 3.9 16.5 53.5M Ours 3.6 15.7 65.9M 
+
+IAM Dataset. As shown in Tab. 2, our model demonstrates significant im-provements on the IAM test set. HTR-ConvText achieves a CER of 4.0% and 16 Table 5: Comparison of Performance (CER, WER) with State-of-the-Art Approaches on the HANDS-VNOnDB Test Set. Our method achieves the new SOTA on the Vietnamese handwriting dataset. 
+
+Method Test CER Test WER Param. 
+
+GFCN 8.4 24.2 1.4M CNN + BLSTM 10.53 29.1 8.3M OrigamiNet 7.6 22.6 39.1M HTR-VT 4.26 11.2 53.5M Ours 3.45 8.9 65.9M a WER of 12 .9% . Notably, these metrics represent a substantial reduction in error rates compared to the previous best-performing model, HTR-VT, im-proving by 0.7% in CER and 2.0% in WER. This confirms the effectiveness of our approach in handling complex handwriting variations. 
+
+LAM Dataset. The results on the LAM dataset (Tab. 3) further highlight the scalability of our model when trained on larger datasets. HTR-ConvText sets a new state-of-the-art record with a remarkable CER of 2.7% and a WER of 7.0% . Surpassing the 3.0% CER threshold is a critical milestone, indicating that our model’s transcription capability is approaching human-level precision on this specific domain. 
+
+READ2016 Dataset. Consistent with the findings on IAM and LAM, Tab. 4 evidences the robustness of our method on the READ2016 dataset. By achieving the lowest error rates (CER: 3.6% , WER: 15 .7% ), HTR-ConvText proves its generalizability across different historical handwriting styles and document layouts. 
+
+HANDS-VNOnDB Dataset. As presented in Tab. 5, our proposed HTR-ConvText model also demonstrates strong performance on the HANDS-VNOnDB dataset. With only 4,433 training samples, HTR-ConvText achieves a CER of 3.45% and a WER of 8.9% , outperforming the previous state-of-the-art method HTR-VT (CER: 4.26% , WER: 11 .2% ). These results indicate that our approach is effective even in low-resource scenarios, and it consistently provides highly accurate recognition of Vietnamese handwritten text. 
+
+4.5. Ablation studies 
+
+To better understand the contribution of each architectural component, we conduct a detailed ablation study that involves both adding and replac-17 Table 6: Ablation study of the proposed architecture. Starting from the baseline Vi-sion Transformer with a ResNet backbone (A), each additional component incrementally improves recognition accuracy. The ConvText Block (B) provides significant gains by enhancing local feature modeling, the TCM head (C) further reduces errors through en-riched contextual aggregation, and the MVP block (D) achieves the best performance by effectively combining global and local representations. 
+
+Component CER (%) WER (%) 
+
+Vision Transformer with ResNet backbone (A) 6.25 20.05 (A) + ConvText Block (B) 4.87 15.38 (B) + TCM head (C) 4.19 13.15 (C) + MVP block (D) 4.02 12.91 
+
+ing modules within our framework. This experimental setup allows us to examine how performance changes when individual components are intro-duced or substituted, thereby revealing their specific roles and interactions. By comparing these configurations, we can determine which design choices offer the most significant improvements in CER and WER. These insights play an essential role in guiding the selection of the final architecture for our HTR-ConvText model. 
+
+4.5.1. Impact of the components 
+
+Table 6 summarizes the ablation study, illustrating the contribution of each architectural component. Starting from the baseline Vision Transformer with a ResNet backbone (A), the model achieves a CER of 6.25% and a WER of 20 .05% . Integrating the ConvText Block (B) significantly boosts performance, confirming the necessity of enhanced local feature modeling for handwriting recognition. Adding the TCM head (C) further decreases both CER and WER, demonstrating its effectiveness in aggregating complemen-tary contextual information. Introducing the MVP block (D) yields the best overall results, showing that the combination of MobileViT-style processing and positional priors provides additional robustness to variations in hand-writing style. Overall, the results validate that each proposed component contributes positively and cumulatively to the final recognition performance. 
+
+4.5.2. Visualization of attention maps 
+
+Figure 5 illustrates the averaged self-attention distributions for the four model configurations (A–D). To analyze how each architectural component 18 Table 7: Ablation study on Transformer layers and heads. 
+
+IAM [33] Layers Heads Val CER Val WER Test CER Test WER 12 8 2.71 8.94 4.11 13.02 10 8 2.68 9.08 4.19 13.33 
+
+8 8 2.71 9.04 4.06 12.93 6 8 2.72 9.08 4.08 13.08 4 6 2.77 9.28 4.23 13.62 Layers Heads Val CER Val WER Test CER Test WER 8 12 2.71 8.94 4.02 12.92 8 8 2.71 9.04 4.06 12.93 8 6 2.71 9.07 4.08 13.1 8 4 3.00 9.95 4.59 14.61 affects contextual reasoning, we select a specific token corresponding to the character highlighted by the red box in the input images. From the last encoder layer, we extract the self-attention weights, average them across all heads, and visualize the resulting 1 × 128 attention vector as a heatmap, where brighter colors indicate stronger attention. 
+
+Configuration A. As shown in Figure 5, the baseline model exhibits a highly localized attention pattern. The selected token focuses almost exclu-sively on itself, suggesting that the baseline primarily relies on the visual features of the target patch and captures limited contextual information. 
+
+Configuration B. With the addition of the ConvText Block, the attention begins to extend to neighboring tokens. The model shows increased respon-siveness to surrounding patches, demonstrating that ConvText strengthens local feature interactions and encourages the use of short-range context. 
+
+Configuration C. After incorporating the TCM head, the attention further broadens. The selected token now attends not only to local neighbors but also to additional contextually relevant regions. This indicates that the TCM head enhances the aggregation of complementary contextual cues. 
+
+Configuration D. The final configuration achieves the most balanced at-tention distribution. As visible in Fig. 5, the selected token maintains a strong focus on the target character while simultaneously attending to a broader set of meaningful surrounding tokens. This behavior highlights the effectiveness of the MVP block in integrating global and local features, lead-ing to more robust recognition under handwriting variations. 19 Figure 5: Visualization of attention maps for the four model configurations (A–D). Brighter colors indicate stronger attention. The red boxes on the input images mark the tokens selected for visualization. Table 8: Ablation study on the effect of different positional embeddings (PEs) on the performance of the MVP block. We report CER and WER on the IAM dataset. 
+
+Component CER (%) WER (%) 
+
+Ours with MV block 4.12 13.09 Ours with LPE 4.06 12.97 Ours with RPE 4.02 12.99 Ours with CPE 4.02 12.91 
+
+4.5.3. Impact of different hyperparameters 
+
+We investigate the impact of different ConvText encoder layers and at-tention heads on the model’s performance. The results are illustrated in Tab. 7. On the IAM dataset, setting the number of layers to 8 achieved the best balance of Validation CER and WER. While increasing the number of attention heads to 12 resulted in a marginal performance gain (achieving the lowest Test CER of 4.02% ), it came at the cost of significantly larger file size and increased training time. As we strive for an architecture that is both lightweight and efficient, we prioritized computational economy over marginal accuracy gains. Consequently, we selected 8 encoder layers and 8 attention heads as the optimal configuration, and we employed this set of parameters across all our experiments to maintain consistency. 20 Figure 6: Qualitative examples from four datasets (LAM, READ 2016, IAM, and HANDS-VNOnDB). For each dataset, the left column presents correctly recognized sam-ples, while the right column shows typical failure cases. These examples illustrate the primary challenges that still lead to misrecognition, including irregular character shapes, continuous cursive ligatures, text degradation, and compact Vietnamese diacritics. 
+
+4.5.4. Impact of different positional embeddings 
+
+Table 8 summarizes the ablation results of different positional embeddings (PEs) applied to the MVP block. All variants outperform the baseline MV block (CER 4.12% , WER 13 .09% ), confirming the importance of positional information. The Learnable Positional Embedding (LPE) offers a modest improvement, while the Relative Positional Embedding [36] (RPE) provides a similar level of enhancement. Notably, the Conditional Positional Encoding (CPE) achieves the most favorable balance between CER and WER (CER 
+
+4.02% , WER 12 .91% ), demonstrating its strong ability to encode spatial re-lationships within handwriting patterns. These results support our choice of CPE as the positional embedding strategy for the MVP block, as it consis-tently yields the most reliable performance gains. 
+
+4.6. Qualitative Results 
+
+To further assess the behavior of our model beyond quantitative metrics, Fig. 6 provides qualitative examples drawn from four benchmark datasets: 21 LAM, READ 2016, IAM, and HANDS-VNOnDB. For each dataset, the left column shows successful predictions, while the right column illustrates rep-resentative failure cases. 
+
+LAM (Row 1)s Correct predictions occur in relatively clean handwrit-ing, whereas misrecognition typically arises from highly irregular character shapes. In the shown example, the letter “v” is written with an unusually tall ascender, causing ambiguity and leading to an incorrect prediction. 
+
+READ 2016 (Row 2). This dataset contains fully cursive writing, and errors frequently result from characters being tightly connected. In the failure case, the model confuses “n” with “m” due to elongated ligatures that merge adjacent strokes. 
+
+IAM (Row 3). Mistakes often stem from visual obstructions or text degra-dation. The example illustrates a word partially crossed out, where the over-laid stroke distorts the underlying characters, causing the system to misread the text. 
+
+HANDS-VNOnDB (Row 4). Vietnamese tonal marks are compact and closely attached to base characters. Errors usually occur when diacritics are written too narrowly or faintly. In the shown case, the model incorrectly predicts the tone mark because the vowel–diacritic spacing is extremely tight. Our qualitative evaluation reveals that residual recognition errors are pre-dominantly attributable to intrinsic challenges inherent in handwritten data, including substantial handwriting variability, stroke distortions, character overlap, and fine-grained diacritic compaction. These observations strongly suggest that the core challenges lie within the data characteristics, rather than architectural limitations. Consequently, future research should focus on enhancing model robustness and data invariance to address these persis-tent difficulties 
+
+5. Conclusion 
+
+In this work, we successfully introduced HTR-ConvText, a novel and compact hybrid CNN–ViT architecture that effectively addresses the in-trinsic challenges of Handwritten Text Recognition (HTR) by judiciously combining detailed local feature extraction with global contextual modeling. Our primary contributions include the proposal of a compact hybrid design, the efficient ConvText encoder with a hierarchical structure, and the Tex-tual Context Module (TCM), which mitigates the inherent linguistic context 22 weaknesses of CTC-based systems. Through extensive cross-lingual evalu-ations conducted on four diverse benchmark datasets (IAM, READ, LAM, and HANDS-VNOnDB), HTR-ConvText consistently demonstrated superior performance, achieving new state-of-the-art results when compared against leading CNN and Transformer-based methodologies, thereby affirming its robustness and strong generalization capabilities across multiple languages. Looking forward, our analysis of residual errors suggests that future efforts should concentrate on enhancing model robustness against challenging intrin-sic data properties, such as severe stroke distortion and character overlap. Furthermore, exploring the feasibility of integrating the TCM’s linguistic modeling capabilities into an inference-time component remains a promising avenue for improving real-world HTR application efficiency. 
+
+References 
+
+[1] T. Pl¨ otz, G. A. Fink, Markov models for offline handwriting recognition: a survey, International Journal on Document Analysis and Recognition (IJDAR) 12 (4) (2009) 269–298. [2] M. A. El-Yacoubi, M. Gilloux, R. Sabourin, C. Y. Suen, An HMM-based approach for off-line unconstrained handwritten word modeling and recognition, IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI) 21 (8) (1999) 752–760. [3] J. Puigcerver, Are multidimensional recurrent layers really necessary for handwritten text recognition?, in: 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR), Vol. 1, IEEE, 2017, pp. 67–72. [4] I. Cojocaru, S. Cascianelli, L. Baraldi, M. Corsini, R. Cucchiara, Watch your strokes: Improving handwritten text recognition with deformable convolutions, in: 2020 25th International Conference on Pattern Recog-nition (ICPR), IEEE, 2021, pp. 6096–6103. [5] T. Bluche, R. Messina, Gated convolutional recurrent neural networks for multilingual handwriting recognition, in: 2017 14th IAPR Interna-tional Conference on Document Analysis and Recognition (ICDAR), Vol. 1, IEEE, 2017, pp. 646–651. 23 [6] A. Graves, J. Schmidhuber, Framewise phoneme classification with bidi-rectional LSTM and other neural network architectures, Neural Net-works 18 (5-6) (2005) 602–610. [7] A. Graves, S. Fernández, F. Gomez, J. Schmidhuber, Connectionist tem-poral classification: labelling unsegmented sequence data with recurrent neural networks, in: Proceedings of the 23rd International Conference on Machine Learning, 2006, pp. 369–376. [8] J. Michael, R. Labahn, T. Gr¨ uning, J. Z¨ ollner, Evaluating sequence-to-sequence models for handwritten text recognition, in: 2019 International Conference on Document Analysis and Recognition (ICDAR), IEEE, 2019, pp. 1286–1293. [9] T. Bluche, J. Louradour, R. Messina, Scan, attend and read: End-to-end handwritten paragraph recognition with MDLSTM attention, in: 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR), Vol. 1, IEEE, 2017, pp. 1050–1055. [10] P. Doetsch, A. Zeyer, H. Ney, Bidirectional decoder networks for attention-based end-to-end offline handwriting recognition, in: 2016 15th International Conference on Frontiers in Handwriting Recognition (ICFHR), IEEE, 2016, pp. 361–366. [11] D. Bahdanau, K. Cho, Y. Bengio, Neural machine translation by jointly learning to align and translate, in: International Conference on Learning Representations (ICLR), 2015. [12] D. Coquenet, C. Chatelain, T. Paquet, End-to-end handwritten para-graph text recognition using a vertical attention network, IEEE Trans-actions on Pattern Analysis and Machine Intelligence 45 (1) (2022) 508– 524. [13] M. Yousef, T. E. Bishop, OrigamiNet: weakly-supervised, segmentation-free, one-step, full page text recognition by learning to unfold, in: Pro-ceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2020, pp. 14710–14719. [14] D. Coquenet, C. Chatelain, T. Paquet, Recurrence-free unconstrained handwritten text recognition using gated fully convolutional network, in: 24 2020 17th International Conference on Frontiers in Handwriting Recog-nition (ICFHR), IEEE, 2020, pp. 19–24. [15] F. Chollet, Xception: Deep learning with depthwise separable convolu-tions, in: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, 2017, pp. 1251–1258. [16] M. Yousef, K. F. Hussain, U. S. Mohammed, Accurate, data-efficient, unconstrained text recognition with convolutional neural networks, Pat-tern Recognition 108 (2020) 107482. [17] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, 
+
+L. Kaiser, I. Polosukhin, Attention is all you need, in: Advances in Neural Information Processing Systems, Vol. 30, 2017. [18] A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai, T. Unterthiner, M. Dehghani, M. Minderer, G. Heigold, S. Gelly, et al., An image is worth 16x16 words: Transformers for image recognition at scale, arXiv preprint arXiv:2010.11929 (2020). [19] M. Li, T. Lv, J. Chen, L. Cui, Y. Lu, D. Florencio, C. Zhang, Z. Li, F. Wei, TrOCR: Transformer-based optical character recognition with pre-trained models, in: Proceedings of the AAAI Conference on Artifi-cial Intelligence, Vol. 37, 2023, pp. 13094–13102. [20] M. Fujitake, DTrOCR: Decoder-only transformer for optical character recognition, arXiv preprint arXiv:2308.15996 (2023). [21] H. Bao, L. Dong, S. Piao, F. Wei, BEiT: BERT pre-training of image transformers, arXiv preprint arXiv:2106.08254 (2021). [22] Y. Liu, M. Ott, N. Goyal, J. Du, M. Joshi, D. Chen, O. Levy, M. Lewis, L. Zettlemoyer, V. Stoyanov, RoBERTa: A robustly optimized BERT pretraining approach, arXiv preprint arXiv:1907.11692 (2019). [23] H. Touvron, M. Cord, M. Douze, F. Massa, A. Sablayrolles, H. Jégou, Training data-efficient image transformers & distillation through atten-tion, in: International Conference on Machine Learning, PMLR, 2021, pp. 10347–10357. 25 [24] B. Li, Y. Hu, X. Nie, C. Han, X. Jiang, T. Guo, L. Liu, DropKey for vision transformer, in: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 22700–22709. [25] Y. Li, D. Chen, T. Tang, X. Shen, HTR-VT: Handwritten text recogni-tion with vision transformer, Pattern Recognition (2024). [26] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y. Zhang, J. Yu, W. Han, S. Wang, Z. Zhang, Y. Wu, R. Pang, Conformer: Convolution-augmented transformer for speech recognition, in: Interspeech 2020, 2020. [27] S. Kim, D. S. Kim, T. Vu, J. H. Kim, Squeezeformer: An efficient trans-former for speech recognition, arXiv preprint arXiv:2206.00888 (2022). [28] Z. Li, L. Wu, J. Li, P. Zhang, X. Liu, Y. Kang, Y. Li, Y. Xie, J. Wang, L. Xie, Zipformer: A faster and better conformer for automatic speech recognition, in: International Conference on Learning Representations (ICLR), 2023. [29] S. Mehta, M. Rastegari, Mobilevit: Light-weight, general-purpose, and mobile-friendly vision transformer (2022). arXiv:2110.02178 .URL https://arxiv.org/abs/2110.02178 
+
+[30] X. Chu, Z. Tian, B. Zhang, X. Wang, C. Shen, Conditional positional encodings for vision transformers (2023). arXiv:2102.10882 .URL https://arxiv.org/abs/2102.10882 
+
+[31] Z. Dai, Z. Yang, Y. Yang, J. Carbonell, Q. V. Le, R. Salakhutdinov, Transformer-XL: Attentive language models beyond a fixed-length con-text, in: Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics, 2019, pp. 2978–2988. [32] U.-V. Marti, H. Bunke, The IAM-database: an english sentence database for offline handwriting recognition, International Journal on Document Analysis and Recognition 5 (2002) 39–46. [33] J. A. Sanchez, V. Romero, A. H. Toselli, E. Vidal, ICFHR2016 compe-tition on handwritten text recognition on the READ dataset, in: 2016 15th International Conference on Frontiers in Handwriting Recognition (ICFHR), IEEE, 2016, pp. 630–635. 26 [34] S. Cascianelli, V. Pippi, M. Maarand, M. Cornia, L. Baraldi, C. Kermor-vant, R. Cucchiara, The LAM dataset: A novel benchmark for line-level handwritten text recognition, in: 2022 26th International Conference on Pattern Recognition (ICPR), IEEE, 2022, pp. 1506–1513. [35] K. C. Nguyen, C. T. Nguyen, T. V. Duong, M. Nakagawa, HANDS-VNOnDB: A vietnamese online handwritten database and its appli-cation to online vietnamese handwritten text recognition, in: 2018 16th International Conference on Frontiers in Handwriting Recognition (ICFHR), IEEE, 2018, pp. 465–470. [36] P. Shaw, J. Uszkoreit, A. Vaswani, Self-attention with relative position representations (2018). arXiv:1803.02155 .URL https://arxiv.org/abs/1803.02155 
+
+27

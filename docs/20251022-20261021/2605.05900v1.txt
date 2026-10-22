@@ -1,0 +1,201 @@
+Title: Understanding Cross-Language Transfer Improvements in Low-Resource HTR: The Role of Sequence Modeling
+
+URL Source: https://arxiv.org/pdf/2605.05900v1
+
+Published Time: Fri, 08 May 2026 00:49:58 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# Understanding Cross-Language Transfer Improvements in Low-Resource HTR: The Role of Sequence Modeling 
+
+# Sana Al-azzawi [0000 −0001 −7924 −4953] Chang Liu [0000 −0002 −7353 −0251] 
+
+# Nudrat Habib [0009 −0005 −9310 −1701] Elisa Barney [0000 −0003 −2039 −3844] 
+
+# Marcus Liwicki [0000 −0003 −4029 −6574] 
+
+Luleå University of Technology, Department of Computer Science, Electrical and Space Engineering , Luleå, Sweden sana.al-azzawi@ltu.se, chang.liu@ltu.se, nudrat.habib@ltu.se, elisa.barney@ltu.se, marcus.liwicki@ltu.se 
+
+Abstract Handwritten Text Recognition (HTR) for Arabic-script lan-guages benefits from cross-language joint training under low-resource conditions, particularly when using CRNN-based models that combine convolutional encoders with sequence modeling. However, it remains unclear whether these improvements are better explained by shared vi-sual representations or sequence-level dependencies. In this work, we conduct a controlled architectural study of line-level Arabic-script HTR, comparing CNN-only models with CTC decoding and CRNN models un-der identical single-script and multi-script training regimes. Experiments are performed on Arabic (KHATT), Urdu (NUST-UHWR), and Persian (PHTD) datasets under low-resource settings ( K ∈ 100 , 500 , 1000 ). Our results show a clear divergence in transfer behavior: while CNN-only models exhibit limited or unstable improvements, CRNN models achieve better performance under multi-script training, particularly in the most data-constrained regimes. Focusing on transfer improvements ( ∆CER )rather than absolute performance, we find that cross-language improve-ments are associated with sequence-level modeling, while sharing visual representations learned by the CNN encoder, corresponding to similar-ities in character shapes across scripts, alone appears to be insufficient. This finding suggests that contextual modeling plays an important role in enabling effective transfer in low-resource scenarios, and that similar behavior may extend to other low-resource language settings. 
+
+Keywords: Arabic script · handwritten text recognition · cross-language learning · low-resource learning · line level HTR 
+
+1
+
+> arXiv:2605.05900v1 [cs.CV] 7 May 2026 2
+
+# 1 Introduction 
+
+Handwritten Text Recognition (HTR) is the task of converting images of hand-written text into machine-readable sequences. Recent advances in computer vi-sion, natural language processing, and deep learning have significantly improved recognition accuracy, particularly for documents written in Latin-based scripts. In contrast, documents using other writing systems, including Arabic script, have received comparatively less attention and remain challenging, especially under limited data conditions [1]. cross-language training has recently emerged as an effective strategy for im-proving HTR in low-resource Arabic-script languages [2]. By leveraging data from related languages such as Arabic, Urdu, and Persian, joint training can substantially improve recognition performance when labeled data is scarce. How-ever, it remains unclear what explains these improvements in performance: are they better associated with shared visual representations (character shapes) or sequence-level modeling (e.g., character sequences) of structural dependencies? In this work, we move beyond establishing the benefits of cross-language transfer and instead ask a more targeted question: which architectural com-ponents are responsible for these improvements? To address this, we con-duct a controlled architectural study, comparing CNN-only models with CTC decoding and CRNN models under identical single-script and multi-script train-ing regimes. Rather than focusing on absolute performance, we analyze trans-fer improvements ( ∆CER ) to better understand how auxiliary data is utilized across architectures. This comparison allows us to investigate how sequence-level modeling relates to to cross-language transfer behavior. Prior work in scene text recognition has explored CNN-only architectures with CTC decoding as an alternative to recurrent models, mainly for efficiency and reduced model size [3, 4]. Similar recurrence-free approaches have also been applied to handwritten text recognition [5, 6]. In contrast, this work compares a CNN-only model with a CRNN model to investigate the role of sequence modeling and to investigate whether the benefits of cross-language transfer are better explained by visual similarity or by sequence-level modeling. Experiments on Arabic (KHATT) [7], Urdu (NUST-UHWR) [8], and Persian (PHTD) [9] under low-resource settings ( K ∈ { 100 , 500 , 1000 } text-line images) show a clear pattern: CNN-only models have limited or unstable improvements, while CRNN models consistently improve with cross-language training. This suggests that architectures incorporating sequence-level modeling play an im-portant role in enabling effective cross-language transfer. 
+
+Contributions. This paper makes the following contributions: 
+
+– We present a controlled comparison between CNN-only and CRNN architec-tures, using the CNN-only model as a baseline to study the role of sequence modeling in cross-language transfer for Arabic-script HTR. 
+
+– We show that architectures incorporating sequence-level modeling are con-sistently associated with larger and more stable cross-language transfer im-provements ( ∆CER ), particularly under extreme low-resource conditions. 3
+
+– We observe that CNN-only models, which rely on visual feature sharing, tend to yield more limited or less stable improvements in our setting compared to models with sequence modeling. 
+
+– We release code and experimental configurations to facilitate reproducibil-ity. 1
+
+The remainder of this paper is organized as follows. We first review related work in Section 2, followed by the proposed methodology in Section 3, which also describes the datasets and experimental setup used in our study. The quantita-tive, qualitative, and ablation results are presented and analyzed in Section 4. Finally, Section 5 concludes the paper and outlines future directions. 
+
+# 2 Background and Related Work 
+
+2.1 Arabic-script HTR and sequence modeling 
+
+HTR for documents written in languages that use Arabic script, such as Arabic, Persian, and Urdu, remains challenging, particularly in low-resource settings where only limited labeled data is available. Although modern deep neural models achieve strong performance with sufficient training data, their accuracy degrades significantly when supervision is scarce [10]. These challenges are amplified by the properties of the Arabic writing sys-tem. The Arabic-script exhibits cursive connectivity, position-dependent char-acter forms (e.g., ﻉ and ﻩ take different forms depending on position within a word, including initial, medial, and final forms), and a high degree of visual similarity between characters that differ only by dots or diacritics (e.g., ﺥ, ﺡ,
+
+ﺝ) [11]. Multiple languages use the Arabic script and share a largely common character inventory, with substantial overlap in base letterforms across scripts, as summarized in Table 1 [12]. This provides an opportunity. Beyond script-level similarity, these languages are also historically and lin-guistically interconnected. Urdu contains a large proportion of Arabic-derived vocabulary, while Persian has borrowed many lexical items from Arabic over cen-turies [11, 13]. This makes Arabic-script languages well suited for cross-language learning. Modern HTR systems [14, 15] combine convolutional encoders with sequence modeling, such as recurrent or attention-based models, to capture context along the text line. This helps resolve ambiguities from visually similar characters in handwritten text, including cursive handwriting. Such convolutional-recurrent architectures have demonstrated strong perfor-mance across both Latin-script and Arabic-script HTR benchmarks, achieving competitive or state-of-the-art results in several studies [14, 16, 17]. Despite the success of sequence-based models, several works in scene text recognition have explored CNN-only architectures with CTC decoding as an alternative to recurrent models, primarily to reduce computational complexity                           
+
+> 1GitHub link will be publicly released upon acceptance 4Table 1: Character inventory overlap across Arabic, Persian, and Urdu, derived from the datasets used in this study. Each row lists a set of characters, and a checkmark indicates their presence in the corresponding language. Note that the listed characters reflect only those observed in the datasets.
+> Characters Arabic Persian Urdu
+> ﺹ ﺱ ﺵ ﺯ ﺭ ﺫ ﺩ ﺥ ﺡ ﺝ ﺙ ﺕ ﺏ ﺍ ✓✓✓
+> ﻱ ﻯ ﻭ ﻩ ﻥ ﻡ ﻝ ﻕ ﻑ ﻍ ﻉ ﻅ ﻁ ﺽ ✓✓✓
+> ک ژ چ پ گ –✓✓
+> ﻙ✓✓–
+> ﺀ✓–✓
+> ڤ ﮪ ۂ ں ڑ ڈ ٹ ––✓
+> ﺇ✓––
+
+and memory consumption [3, 4]. Similar recurrence-free approaches have also been applied to HTR including CNN-CTC models for Chinese HTR [5] and fully convolutional architectures trained with CTC [6]. While these approaches demonstrate that recognition is possible without ex-plicit sequence modeling, they do not clarify the role of sequence modeling in cross-language transfer. In this work, we instead use a CNN-only model as a controlled baseline to study the contribution of sequence modeling, allowing us to assess its role in cross-language transfer. 
+
+2.2 cross-language and low-resource HTR 
+
+Multilingual and cross-script learning has been explored in both OCR and HTR. In particular, sequence-based models have been shown to generalize across lan-guages within the same script family, indicating that shared structural patterns can be leveraged across languages [18]. More recently, cross-language training for Arabic-script HTR has demonstrated that joint training across related lan-guages improves recognition performance under low-resource conditions [2]. Several works have also addressed low-resource HTR through data augmen-tation, synthetic data generation, or transfer learning. For example, synthetic data has been used to improve recognition for Ottoman Turkish [1], while other studies combine multiple datasets within the same language to increase training data [19, 20]. However, these approaches primarily focus on improving perfor-mance rather than analyzing the mechanisms underlying transfer. Overall, prior studies either operate in printed OCR, high-resource settings, or single auxiliary–target configurations, and typically report only aggregate performance. 5
+
+The question of why cross-language transfer works—specifically, whether it is associated with shared visual representations or sequence-level modeling— remains largely unexplored. 
+
+# 3 Methodology 
+
+3.1 Problem Formulation 
+
+We study cross-language transfer in Arabic-script HTR under controlled archi-tectural conditions. Let Dt denote a target-language dataset and Da auxiliary datasets drawn from related Arabic-script languages. Given a limited labeled subset D(K) 
+
+> t
+
+with K ∈ { 100 , 500 , 1000 }, we assume a joint training setup in which the model is trained on D(K) 
+
+> t
+
+∪ D a and evaluated on the target dataset. Prior work has shown that cross-language transfer improves recognition per-formance under low-resource conditions [2]. In this work, we move beyond establishing these improvements and instead aim to better understand which components of the recognition model contribute to this effect. To this end, we consider two model families: a CNN-only model ( MCNN )that captures visual representations, and a CRNN model ( MCRNN ) that ad-ditionally incorporates sequence modeling. By comparing MCNN and MCRNN 
+
+under identical training conditions, we aim to investigate the contribution of sequence modeling to cross-language transfer. All experiments are conducted under a unified training and evaluation pro-tocol to ensure a fair comparison between model architectures. 
+
+3.2 Architectural Comparison 
+
+To investigate the source of cross-language transfer improvements, we com-pare two model families under identical training conditions: a CNN-only model (MCNN ) and a CRNN model ( MCRNN ). As illustrated in Fig. 1, the two archi-tectures differ only in the presence of recurrent sequence modeling. 
+
+CNN-only model (MCNN ). The CNN-only model (Fig. 1a) consists of a convolutional feature extractor followed by a CTC prediction layer. The feature extractor maps the input image into a sequence of visual features, which are then used to predict character probabilities at each time step. We employ a ResNet-based architecture as the feature extractor. It begins with an initial 7 × 7 convolutional layer with stride 2 × 2, followed by multiple residual blocks with increasing channel dimensions (64, 128, and 256). Each residual block contains two 3 × 3 convolutional layers with batch normalization and ReLU activation, together with identity shortcut connections. Max-pooling layers are used to progressively reduce spatial resolution. To obtain a sequential representation, the resulting feature maps are col-lapsed along the vertical dimension using column-wise pooling, producing a one-dimensional feature sequence along the image width. 6  
+
+> Figure 1: Architectural comparison of the two model families used in this study. (a) CNN-CTC (CNN-only) model ( MCNN ), which relies solely on visual feature extraction followed by CTC decoding. (b) CNN-RNN-CTC (CRNN) model ( MCRNN ), which augments the visual encoder with recurrent sequence modeling before CTC prediction.
+
+For prediction, we use CTC, which enables sequence prediction without ex-plicit alignment between input features and output labels. At each time step, the model predicts character probabilities, and the final sequence is obtained by removing repeated characters and blank symbols. This architecture relies solely on shared visual representations across scripts, without explicit sequence modeling. 
+
+CRNN model ( MCRNN ). The CRNN model (Fig. 1b) extends MCNN by incorporating a sequence modeling component on top of the same convolutional feature extractor. While the CNN encoder produces a sequence of visual features, these features may lack sufficient contextual information for accurate character prediction. To address this, the CRNN introduces a recurrent sequence modeling module consisting of three stacked bidirectional LSTM layers, each with 256 hidden units per direction. These layers model contextual dependencies along the sequence, allowing the model to capture long-range relationships between characters. The output of the final BiLSTM layer is projected onto the character space through a fully connected layer, and prediction is performed using the same CTC objective as in MCNN .We note that the CRNN model differs from the CNN-only model not only in the presence of sequence modeling, but also in increased representational ca-pacity due to additional recurrent layers. As a result, this comparison reflects a combined architectural effect rather than attributing improvements solely to se-quence modeling. Nevertheless, since both models share the same convolutional backbone and training protocol, the comparison provides useful insight into the role of contextual modeling in cross-language transfer. 7
+
+Controlled comparison. Both MCNN and MCRNN share the same convolutional backbone, training procedure, and output vocabulary. The primary architec-tural difference is the inclusion of recurrent sequence modeling in MCRNN . This controlled setup allows us to examine how sequence-level modeling relates cross-language transfer behavior. The CNN-only model ( MCNN ) contains approximately 5.8M parameters, while the CRNN model ( MCRNN ) contains 10.1M parameters due to the addi-tional recurrent layers. To control for model capacity, we additionally evaluate a higher-capacity CNN-only variant ( MCNN-expand ) by increasing the width of the convolutional layers while keeping the overall architecture unchanged. Specifically, the channel dimensions are increased from (64, 128, 256) to (86, 172, 344), resulting in a model with approximately 10.4M parameters, closely matching the capacity of the CRNN. This design enables a fairer comparison without altering the model topol-ogy, and allows us to assess whether the observed transfer improvement can be explained by model capacity alone. 
+
+3.3 Training Setting 
+
+For each target language, we consider both single-script and multi-script training settings. Let J denote the number of auxiliary datasets in Da.
+
+Single-script training ( J = 0 ). The model is trained using only K labeled lines from the target dataset D(K) 
+
+> t
+
+.
+
+Multi-script training ( J = 2 ). The model is trained on the union of the limited target subset D(K) 
+
+> t
+
+and the auxiliary datasets Da = ∪Jj=1 D(j) 
+
+> a
+
+:
+
+Dtrain = D(K) 
+
+> t
+
+∪ D a. (1) This setting reflects a realistic scenario in which annotated data for the target language is scarce, while related-script datasets are available. For each model (MCNN and MCRNN ), experiments are conducted across all values of K under both single-script and multi-script training settings, following the protocol in [2]. We refer the reader to that work for further details on the training configuration. The effect of different auxiliary dataset configurations (e.g., using one aux-iliary dataset ( J = 1 ) versus multiple auxiliary datasets ( J > 1)) has been investigated in prior work [2], where combining multiple auxiliary datasets was generally found to yield stronger improvements. In this work, we do not revisit this aspect and instead fix the multi-script setting ( J = 2 ) in order to focus on the effect of architectural differences on cross-language transfer improvements. Importantly, our goal is not to optimize auxiliary data composition, but to study how different architectures translate auxiliary data into transfer improvements under a consistent training setup.) 8
+
+3.4 Datasets 
+
+We conduct experiments on three Arabic-script HTR datasets: KHATT (Ara-bic) [7], NUST-UHWR (Urdu) [8], and PHTD (Persian) [9]. These datasets represent three distinct but closely related writing systems sharing a common script, enabling controlled evaluation of cross-language transfer. KHATT is used as the Arabic benchmark, NUST-UHWR provides a large-scale Urdu dataset with diverse handwriting styles, and PHTD represents a low-resource Persian dataset with limited training data and reduced variability. PHTD serves as the most data-constrained setting, as it contains substantially fewer training samples (1,473 lines) [17] and reduced textual diversity compared to KHATT and NUST-UHWR, allowing us to analyze transfer behavior under extreme low-resource conditions. The original PHTD dataset [9] is provided at the page level without prede-fined line segmentation or official splits. In this work, we use the line-level version and data partitioning introduced in [17], which enables consistent training and evaluation. All experiments are conducted at the line level, and evaluation is performed independently on each target dataset. Additional details on dataset statistics can be found in [17]. Representative text line samples from these datasets are shown with the results in Figure 4. 
+
+3.5 Implementation Details 
+
+Models were implemented in PyTorch and trained on an NVIDIA A100 GPU. Optimization was performed using AdamW (batch size 16, initial learning rate 
+
+5 × 10 −4) with a multi-step learning rate schedule reducing the rate by 0.1 at 50% and 75% of training. We first compute the average height and width of input line images across the combined training sets of KHATT, NUST-UHWR, and PHTD. Based on these statistics, we select a fixed input size of 110 pixels in height and 1450 pixels in width as representative values. Input line images are converted to grayscale and rescaled to this fixed height while preserving aspect ratio, thereby upscaling smaller images and downscaling larger ones. The corresponding width is adjusted proportionally; if it exceeds 1450 pixels, the image is further rescaled to fit within this limit. Additionally, fixed horizontal padding of 64 pixels was applied to both sides of each image following [14], which has been shown to improve recognition per-formance in line-level HTR. To align with left-to-right sequence modeling while handling right-to-left scripts, ground-truth transcriptions were reversed during training. To improve robustness under low-resource conditions, we applied standard data augmentations, including affine transformations, elastic and grid distor-tions, morphological operations, and brightness and contrast adjustments. Aug-mentations were applied stochastically across datasets. 9
+
+For each value of K, training was performed for a fixed number of optimiza-tion steps (iterations). In the multi-script setting, optimization was performed on Dtrain = D(K) 
+
+> t
+
+∪ D a, while validation and model selection were conducted exclusively on the target validation split. To verify robustness, we repeated experiments with three different random seeds. While the figures report results from a single representative run for clarity, we observed consistent trends across seeds, with similar relative improvements between single-script and multi-script training. Evaluation is performed using Character Error Rate (CER), the primary metric in this work, computed as the normalized edit distance between predicted and ground-truth transcriptions. The checkpoint with the lowest validation CER on the target dataset was selected for evaluation. 
+
+# 4 Results 
+
+This section presents the evaluation and analysis of the proposed architectural comparison, focusing on understanding the behavior of cross-language transfer improvements ( ∆CER ) in Arabic-script HTR. We analyze how the CNN-only (MCNN ) and the CRNN ( MCRNN ) models benefit from multi-script training under identical experimental conditions. We emphasize that our analysis focuses on transfer changes ( ∆CER), defined as ∆CER = CERMulti − CERSingle, where negative values indicate improve-ment from multi-script over single-script training, rather than absolute CER values. 
+
+4.1 CNN-only vs. CRNN Models under cross-language Training 
+
+Figure 2 reports the behavior of the CNN-only and CRNN architectures under single-script ( J=0 ) and multi-script ( J=2 ) training. Both architectures benefit from cross-language training, but they differ in how effectively they translate auxiliary data into transfer changes (ΔCER). The CRNN consistently achieves larger and more stable improvements across datasets and data regimes. For example, on KHATT, the CRNN improves from 26.7 to 19.9 CER ( ∆CER = 
+
+−6.8) at K = 100 , whereas the CNN-only achieves a smaller reduction in CER from 29.6 to 25.8 ( ∆CER = −3.8). A similar trend is observed on PHTD, where the CRNN achieves substantial improvements (e.g., 31.4 to 18.3 at K = 100 ,
+
+∆CER = −13 .1), while the CNN-only model improvements are more limited (31.6 to 25.5, ∆CER = −6.1). On NUST-UHWR, both architectures benefit strongly from multi-script train-ing at K = 100 , with the CRNN improving from 25.9 to 17.9 CER and the CNN-only model from 29.5 to 21.6. However, as the number of target labeled samples increases, the improvements from multi-script training decrease. At K = 500 ,the CRNN achieves 11.2 CER under multi-script training compared to 13.6 for the CNN-only model, and at K = 1000 , it achieves 9.3 compared to 11.6. 10 
+
+Figure 2: Comparison of the CNN-only model ( MCNN ) and CRNN model ( MCRNN )performance under single-script ( J=0 ) and multi-script ( J=2 ) training across low-resource regimes ( K=100 , 500 , 1000 ), reported using CER (%). Results are shown for KHATT (Arabic), NUST-UHWR (Urdu), and PHTD (Persian). Lower CER indicates better recognition performance. 
+
+Figure 3: cross-language transfer changes ( ∆CER = CERMulti − CERSingle, in per-centage points) for the CRNN and the CNN-only architectures across low-resource regimes ( K=100 , 500 , 1000 ). Negative values indicate improvement from multi-script training over single-script training. The CRNN consistently achieves larger and more stable improvements, while the CNN-only exhibits weaker and sometimes positive 
+
+∆CER values, indicating negative transfer. 
+
+Overall, these results suggest that cross-language transfer is not fully ex-plained by visual features alone, and is more consistently observed in models that incorporate sequence-level contextual modeling. 
+
+4.2 Analysis of Cross-Script Transfer Improvements 
+
+Figure 3 shows cross-language transfer changes ( ∆CER) for the CNN-only and the CRNN models across three low-resource regimes. First, the CRNN achieves larger improvements than the CNN-only, especially in low-resource settings. At K=100 , CRNN improvements are substantially larger across all datasets, reaching -13.10 CER points on PHTD and -8.00 on NUST-UHWR, compared to more modest improvements from the CNN-only model (-6.10 and -7.90, respectively). This suggests that a substantial portion 11 
+
+of the transfer benefit in extremely low-resource regimes is associated with shared sequence modeling rather than shared visual features alone. Second, the CRNN transfer improvements decrease smoothly as K increases, reflecting diminishing returns from auxiliary scripts as more target-script data becomes available. On KHATT, CRNN improvements decrease from -6.8 at K=100 to -2.0 and -1.5 at K=500 and K=1000 , respectively, while the CNN-only shows unstable behavior, including negative transfer at higher data regimes ( +0 .2 and +0 .3). In contrast, the CNN-only model exhibits less stable behavior, including negative transfer in some cases (e.g., PHTD at K=500 ). Finally, the contrast between architectures is particularly pronounced on PHTD, where the CRNN achieves consistently strong improvements across all regimes (-13.10, -2.80, and -3.50), while the CNN-only improvements remain smaller and less consistent (-6.10, +0 .40 , and -0.90). On NUST-UHWR, both ar-chitectures benefit at K=100 , with the CNN-only model achieving a comparable improvement (-7.90 vs. -8.00), but the CRNN maintains stronger improvements as K increases (-2.10 vs. -1.30 at K=500 , and -1.30 vs. -0.20 at K=1000 ). Overall, these results provide consistent evidence that cross-language trans-fer in HTR is associated with sequence-level modeling, particularly in terms of the magnitude and stability of the observed improvements. This suggests that contextual modeling enables more effective use of auxiliary data when learning cross-language representations. These observations may be influenced by differences in model capacity. To further examine whether these differences can be explained by model capacity, we evaluate a higher-capacity CNN-only baseline ( MCNN-expand ) with a param-eter count similar to MCRNN . This is achieved by increasing the width of the convolutional layers while keeping the overall architecture unchanged, allowing for a fair comparison without altering the model topology. We conduct this analysis on two datasets (KHATT and PHTD), which ex-hibit the largest differences in transfer improvement between the CNN-only (MCNN ) and CRNN ( MCRNN ) models, thereby providing the most informa-tive settings for this comparison. Table 2 shows the transfer improvements ( ∆CER) for the original CNN-only model and the higher-capacity CNN model. Overall, increasing the capacity of the CNN-only model does not lead to more consistent transfer benefits nor does it reach the performance improvements achieved by the CRNN. While a small ben-efit is observed for PHTD at K = 100 , the higher-capacity CNN ( MCNN-expand )shows weaker or even positive ∆CER values (indicating degradation) at higher data regimes. For example, on PHTD at K = 1000 , the ∆CER changes from 
+
+−0.90 to +0 .83 . A similar trend is observed on KHATT, where increasing model capacity often reduces benefits rather than improving them. These findings suggest that increasing model capacity alone is not sufficient to explain the observed transfer performance improvements, and that architectural components such as sequence-level modeling play an important role in effectively 12 Table 2: Ablation study comparing cross-language transfer improvements ( ∆CER ) for the original CNN-only model (MCNN ), a higher-capacity CNN-only model (MCNN-expand ), and the CRNN model ( MCRNN ). Negative values indicate improve-ment from multi-script training over single-script training.                       
+
+> Dataset KMCNN MCNN-expand MCRNN
+> KHATT 100 -3.80 -2.58 -6.80 500 +0.20 +0.23 -2.00 1000 +0.30 +0.80 -1.50 PHTD 100 -6.10 -7.21 -13.10 500 +0.40 +1.34 -2.80 1000 -0.90 +0.83 -3.50
+
+leveraging auxiliary data, although this relationship should be interpreted in terms of association rather than strict causation. 
+
+Architectural takeaway. Figures 2 and 3 show that both models benefit from cross-language training, but the CRNN achieves larger and more consistent im-provements than the CNN-only model. The CNN-only model shows its strongest improvements in the most data-scarce regime, while the CRNN continues to im-prove as K increases, suggesting that architectures incorporating sequence-level modeling play an important role in associated with more consistent transfer improvements. 
+
+4.3 Qualitative Analysis 
+
+For qualitative analysis, Figure 4 shows six text-line samples and their corre-sponding ground-truth and predicted transcriptions for both the CNN-only and CRNN models under multi-script training ( J = 2 ). The examples are shown at 
+
+K = 500 , as a representative setting. At K = 100 , predictions are often noisy, while at K = 1000 , differences between architectures are less pronounced. Under multi-script training, the CNN-only model still exhibits errors such as missing characters and confusion between visually similar letters, whereas the CRNN model more consistently resolves these ambiguities. These examples illus-trate how sequence-level modeling is associated with more coherent predictions when leveraging cross-language information, supporting the observed differences in transfer improvements ( ∆CER). While qualitative examples are shown under multi-script training, they reflect the same trends observed in the quantitative analysis across architectures. 
+
+# 5 Conclusion 
+
+In this work, we investigated the source of cross-script transfer improvements in low-resource Arabic-script HTR through a controlled architectural comparison 13    
+
+> Figure 4: Qualitative comparison of predictions from the CNN-only ( MCNN ) and CRNN ( MCRNN ) models on KHATT, NUST, and PHTD datasets under multi-script training ( J=2 ). For each dataset, two representative examples are shown. Incorrect predicted characters are highlighted in red, while missing characters are indicated in blue. The examples illustrate differences in how the two architectures leverage contex-tual information when benefiting from cross-language training.
+
+between CNN-only and CRNN models. Rather than focusing on absolute per-formance, our analysis examined how different architectures benefit from cross-language training. We found that architectures incorporating sequence-level modeling are associated with more consistent and stable cross-language trans-fer improvements across related scripts. While CNN-only models can capture shared visual features, they tend to yield more limited and sometimes unstable improvements under multi-script training. In contrast, models with sequence-level modeling more reliably leverage auxiliary data to achieve transfer improve-ments, particularly in the most data-constrained settings. Importantly, while both architectures benefit from cross-language training, the CNN-only model shows its strongest improvements in the most data-scarce regime, whereas the CRNN achieves larger and more consistent improvements across data regimes. These findings suggest that cross-language transfer improvements are consis-tently larger in architectures that incorporate sequence-level modeling, although 14 
+
+visual feature sharing alone does not consistently lead to stable transfer im-provements in our experiments. Future work will explore extending this analysis to transformer-based architectures and studying cross-language transfer across more diverse script families, including transfer between Latin and Arabic scripts. 
+
+# 6 Acknowledgements 
+
+This research is financially supported by the European Regional Development Fund and the MARTINA-project (no. 20367152) and partially supported by the Wallenberg AI, Autonomous Systems and Software Program (WASP). 
+
+# References 
+
+[1] E. F. Bilgin Tasdemir, Printed Ottoman text recognition using synthetic data and data augmentation, International Journal on Document Analysis and Recognition (IJDAR) 26 (3) (2023) 273–287. [2] S. Al-azzawi, E. Barney, M. Liwicki, Cross-Language Learning within Ara-bic Script for Low-Resource HTR, arXiv:2605.02089 (2026). [3] F. Borisyuk, A. Gordo, V. Sivakumar, Rosetta: Large scale system for text detection and recognition in images, in: Proceedings of the 24th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining, 2018, pp. 71–79. [4] J. Baek, G. Kim, J. Lee, S. Park, D. Han, S. Yun, S. J. Oh, H. Lee, What is wrong with scene text recognition model comparisons? dataset and model analysis, in: Proceedings of the IEEE/CVF International Conference on Computer Vision, 2019, pp. 4715–4723. [5] B. Liu, X. Xu, Y. Zhang, Offline handwritten Chinese text recognition with convolutional neural networks, arXiv preprint arXiv:2006.15619 (2020). [6] D. Coquenet, C. Chatelain, T. Paquet, Recurrence-free unconstrained hand-written text recognition using gated fully convolutional network, in: 2020 17th International Conference on Frontiers in Handwriting Recognition (ICFHR), IEEE, 2020, pp. 19–24. [7] S. A. Mahmoud, I. Ahmad, W. G. Al-Khatib, M. Alshayeb, M. T. Parvez, V. Märgner, G. A. Fink, KHATT: An open Arabic offline handwritten text database, Pattern Recognition 47 (3) (2014) 1096–1112. [8] N. ul Sehr Zia, M. F. Naeem, S. M. K. Raza, M. M. Khan, A. Ul-Hasan, F. Shafait, A convolutional recursive deep architecture for unconstrained Urdu handwriting recognition, Neural Computing and Applications 34 (2) (2022) 1635–1648. [9] A. Alaei, U. Pal, P. Nagabhushan, Dataset and ground truth for handwrit-ten text in four different scripts, International Journal of Pattern Recogni-tion and Artificial Intelligence 26 (04) (2012) 1253001. [10] C. Luo, Y. Zhu, L. Jin, Y. Wang, Learn to augment: Joint data augmen-tation and network optimization for text recognition, in: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2020, pp. 13746–13755. 15 
+
+[11] M. Salaheldin Kasem, M. Mahmoud, H.-S. Kang, Advancements and chal-lenges in Arabic optical character recognition: A comprehensive survey, ACM Computing Surveys 58 (4) (2025) 1–37. [12] R. Ahmad, S. Naz, M. Z. Afzal, S. F. Rashid, M. Liwicki, A. Dengel, The impact of visual similarities of Arabic-like scripts regarding learning in an OCR system, in: 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR), Vol. 7, IEEE, 2017, pp. 15–19. [13] F. Nemati, C. Westbury, G. Hollis, H. Haghbin, The Persian lexicon project: minimized orthographic neighbourhood effects in a dense language, Journal of Psycholinguistic Research 51 (5) (2022) 957–979. [14] S. Corbillé, E. H. Barney Smith, Applying center loss to neural networks for sequence prediction: A study for handwriting recognition, in: International Joint Conference on Neural Networks (IJCNN), IEEE, 2025. [15] K. Barrere, Y. Soullard, A. Lemaitre, B. Coüasnon, Training transformer architectures on few annotated data: an application to historical hand-written text recognition, International Journal on Document Analysis and Recognition 27 (4) (2024) 553–566. [16] G. Retsinas, G. Sfikas, B. Gatos, C. Nikou, Best practices for a handwritten text recognition system, in: International Workshop on Document Analysis Systems, Springer, 2022, pp. 247–259. [17] S. Al-azzawi, E. Barney, M. Liwicki, CER-HV: A human-in-the-loop frame-work for cleaning datasets applied to Arabic-script HTR, arXiv preprint arXiv:2601.16713 (2026). [18] A. Ul-Hasan, T. M. Breuel, Can we build language-independent OCR using LSTM networks?, in: Proceedings of the 4th International Workshop on Multilingual OCR, 2013, pp. 1–5. [19] N. Riaz, H. Arbab, A. Maqsood, K. Nasir, A. Ul-Hasan, F. Shafait, Conv-transformer architecture for unconstrained off-line Urdu handwriting recog-nition, International Journal on Document Analysis and Recognition (IJ-DAR) 25 (4) (2022) 373–384. [20] A. Hamza, S. Ren, U. Saeed, ET-Network: A novel efficient transformer deep learning model for automated Urdu handwritten text recognition, PLOS One 19 (5) (2024) e0302590.

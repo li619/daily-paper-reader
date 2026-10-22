@@ -1,0 +1,234 @@
+Title: A Free Lunch? Adapting PP-OCRv6 for Historical Text Recognition
+
+URL Source: https://arxiv.org/pdf/2609.20064v1
+
+Published Time: Fri, 18 Sep 2026 01:02:38 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+Anthology of Computers and the Humanities, Vol. 1 
+
+# A Free Lunch? Adapting PP-OCRv6 for Historical Text Recognition 
+
+Benjamin Kiessling 1 
+
+> 1
+
+ALMAnaCH, Inria Paris 
+
+Abstract 
+
+Despite impressive reported scores, large vision-language models have seen limited practical uptake in historical automatic text recognition because of their computa-tional cost, dependence on large-scale pretraining, and hallucination. Historical ATR therefore continues to rely largely on compact CRNN line recognizers, which are visu-ally grounded and trainable on modest data. Lightweight recurrence-free recognizers promise the accuracy of larger models with the practical advantages of CRNNs, yet have not been comprehensively evaluated on historical writing. We adapt PP-OCRv6, a recent compact text recognizer without strong language modeling, for historical line recognition and compare it with a conventional CRNN across generalized pretraining, domain-specific training, corpus-level fine-tuning, and manuscript-specific few-shot adaptation on multilingual Latin- and Arabic-script material. While PP-OCRv6 does not consistently outperform the baseline when trained from scratch, heterogeneous pretraining produces markedly better generalization. Comparisons with the Qwen3.5-based Medusa recognizer further show that fine-tuned PP-OCRv6 can outperform a large VLM tailored towards historical Latin-script HTR. 
+
+Keywords: automatic text recognition, historical documents, handwritten text recognition, optical character recognition, PP-OCRv6 
+
+1 Introduction 
+
+For the better part of a decade, line-wise recognition with convolutional recurrent neural networks (CRNNs) trained using connectionist temporal classification (CTC) [15] has been the dominant paradigm in automatic text recognition (ATR), including for historical material. Typically combining a convolutional feature extractor, bidirectional long short-term memory layers, and a linear projection [23; 27], these systems are accurate, robust, trainable on the modest amounts of annotated data available for individual historical corpora, and require no character-level segmentation. For these reasons, they underlie widely used recognition engines such as Calamari [33], Tesseract 4 [31], and kraken [18]. Text recognition has recently shifted towards large vision-language models. Besides achieving excellent error rates in conventional line recognition, these models can recognize entire paragraphs or pages without explicit segmentation. Unlike earlier methods such as Start, Follow, Read [30], which learn line extraction and recognition jointly, Qwen-VL [2] and LightOnOCR [29] directly produce ordered text and document structure from com-plete page images. Dispensing with line segmentation is especially attractive for historical ATR, where segmentation errors are frequently responsible for a significant proportion of overall recognition errors. Generative recognition, in particular in the full-page setting, has nevertheless seen limited adoption in practical historical ATR. Autoregressive systems with strong language   
+
+> Benjamin Kiessling. “A Free Lunch? Adapting PP-OCRv6 for Historical Text Recognition.” In: Proceedings of Conference XXX , ed. by Editor1 Editor2. Vol. 1. Anthology of Computers and the Humanities. 2025, 1–1. https://doi.org/00000/00000. © 2025 by the authors. Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).
+
+1arXiv:2609.20064v1 [cs.CV] 17 Sep 2026 models can produce insufficiently grounded transcriptions, deriving text from linguistic priors without corresponding visual evidence. This and similar phenomena, commonly called hallucination, are still poorly understood. Recent work on Ancient Greek editions has demonstrated extensive overcorrection even in the presence of extensive changes such as word shuffling [17], pointing towards a fundamental problem in the construction of these systems. Large autoregressive models are also expensive to train and deploy, and acquire their capabilities from pretraining corpora that cannot reasonably be produced for most his-torical collections. The mismatch is especially acute for non-Western traditions, obsolete scripts, minority and low-resource languages, and projects using specialized transcription norms. Synthetic data can alleviate annotation scarcity, for example by rendering tran-scriptions in digital typefaces approximating the target hands [4]. This approach remains limited to writing with suitable typographic surrogates, which places substantial portions of the written record beyond the practical reach of models that rely on large-scale pre-training. These drawbacks have renewed interest in compact recognizers that replace recurrent layers without introducing high-capacity generative language models. Such systems retain the modest data requirements and visual grounding of conventional line recognition while permitting parallel execution on modern hardware. PP-OCRv6 is a recent general-purpose example whose authors report strong results on printed and handwritten text in document scans and natural scenes, with models ranging from 1.1 to 19 million parameters [36]. This article asks whether PP-OCRv6 offers a “free lunch” for historical ATR as a replacement for recurrent line recognition. The method is adapted for historical line images and evaluated when trained from scratch on project-specific data, pretrained as a generalized model, and fine-tuned towards particular datasets and transcription norms. Comparisons with kraken and Medusa, a Qwen3.5-9B-based line recognizer [22], examine recognition accuracy, few-shot adaptation, and inference throughput. 
+
+2 Related Work 
+
+2.1 Recurrent line recognition with CTC 
+
+Connectionist temporal classification permits alignment-free sequence modelling and therefore permits training from line images and their transcriptions without character-level annotations [15]. Combined with a convolutional feature extractor and bidirectional LSTMs, it has defined historical machine-printed and handwritten text recognition for the last decade; representative examples include the systems described by [23] and [33]. Although highly accurate, their recurrent sequence processing cannot fully exploit the hardware and software optimizations available to convolutional and attentional models. 
+
+2.2 Language-generative recognition 
+
+The principal attraction of language-generative recognition is its promise of higher recog-nition accuracy through the combination of visual features and strong pretrained language models. Representative systems include TrOCR, which combines pretrained image and text Transformers [20], and DTrOCR, whose decoder is initialized from GPT-2 [12]; both operate on presegmented text images. Generative models also offer greater flexibility with respect to segmentation. Removing line segmentation as a fragile component of the recognition pipeline has been a longstand-ing objective. Start, Follow, Read learns line localization and recognition jointly [30], 2OrigamiNet unfolds the two-dimensional page into a sequence [34], and DAN uses at-tention to traverse the document [9]. These pre-VLM systems reconstruct an internal segmentation through task-specific architectures that are brittle and difficult to train. Large VLMs instead use a common autoregressive formulation across text lines, para-graphs, and complete pages. Qwen-VL provides this flexibility as part of a general-purpose prompted model [2]; LightOnOCR applies it specifically to complete-page recognition [29]; and Churro is designed specifically for full-page historical ATR [25]. 
+
+2.3 Compact recurrence-free recognizers 
+
+Attempts to eliminate recurrence long predate the widespread adoption of large Trans-former models. [28] explored fully convolutional sequence decoding, while [13] and [35] retained CTC but replaced recurrent sequence modelling with convolutions. Despite strong in-domain results, these models often generalized less well than recurrent systems in prac-tical transfer. This remained obscured by limited in-domain evaluation, which is a poor predictor of performance under domain shift [14]. More recent recurrence-free recognizers include the convolutional Gated Fully Convo-lutional Network [8] and Easter2.0 [5]. Attentional designs include the Modular Light Transformer [3], HTR-VT [21], and SVTRv2 [11]. Their scale remains far below that of language-generative recognizers: the Modular Light Transformer has 7.7 million param-eters [3], HTR-VT 53.5 million [21], and PP-OCRv6 1.1-19 million, compared with one billion for LightOnOCR, itself considered a lightweight VLM. 
+
+3 Methodology 
+
+PP-OCRv6 is a two-stage OCR system for document scans and natural scene images. As only its potential for replacing a CRNN baseline is evaluated, only its recognition stage is considered. 
+
+3.1 PP-OCRv6 text recognition 
+
+The recognition component combines an LCNetV4 convolutional backbone, an attentional LightSVTR neck, and a CTC head. The tiny variant omits LightSVTR, while the small and medium variants increase backbone capacity and neck width. The generalized rec-ognizers reported by the authors support Chinese and contain 1.1, 5.2, and 19 million parameters. The smaller character inventories used in our experiments reduce the size of the final linear projections and the respective parameter counts to 0.68, 3.22, and 15.86 million. Training combines equally weighted CTC and label-smoothed cross-entropy from an auxiliary autoregressive NRTR decoder [26]. The decoder acts as a regularizer and is discarded for inference, which remains CTC-based. The original method uses the Adam optimizer and a canonical input size of 48 × 320 pixels. PP-OCRv6 inherits a data curation procedure from PP-OCRv5 [10] intended to filter noisy, incorrect, and trivially easy transcriptions. A referee recognizer assigns each line in the training dataset a mean character confidence. Samples below 0.80 are treated as difficult or noisy and those above 0.97 as trivial; around half of the original training set falls within the 0.95-0.97 confidence range the authors determine to be optimal. 33.2 Adaptation to historical text recognition 
+
+The nominal PP-OCRv6 input line height is doubled from 48 to 96 pixels to preserve fine strokes, diacritics, and abbreviation marks in degraded historical text. In preliminary experiments, further increases did not result in additional validation score gains. This intervention is consistent with other systems optimized for historical ATR: 128 pixels in PyLaia [24] and 120 in kraken [18], compared with 36 pixels in Tesseract 4 [32], which is optimized for modern machine-printed text. The default PP-OCRv6 configuration imposes two restrictive limits that are manifestly unsuitable for historical ATR: NRTR targets are capped at 23 code points, and every line image is resized to 48 × 320 pixels. At the model’s horizontal stride of eight, the latter provides only 40 CTC steps, which is insufficient for historical lines of even moderate length. Lines are instead scaled to 96 pixels in height while preserving their aspect ratio, so that the available CTC sequence length grows with the input line. The NRTR target limit is raised accordingly. The distillation loss using a medium teacher model for the original PP-OCRv6 tiny variant is omitted. Confidence-window filtering is also discarded. Its lower boundary was tested on the French, Latin, and Spanish subset of the generalized-model training corpus, where it rejects 17% of lines, compared with approximately 3% of the original training data [10]. The medium-variant generalized model obtains a CER of at most 15% on 52% of the rejected material. The correctly annotated examples in Figure 1 receive filter confidences between 0.55 and 0.68 despite being reproduced exactly by the generalized model. Confidence alone is therefore insufficient for detecting incorrect annotations because domain familiarity and annotation quality are intermingled in a single score. On hetero-geneous historical data, confidence filtering removes difficult but correctly annotated lines and underrepresents rare scripts, hands, and typographies. It is therefore not used for pretraining.             
+
+> CORREGIDOR Y LA MOLINERA c= 0 .55
+> Merci mon cher René-Jean c= 0 .59
+> ainsi que la couche archéologique. c= 0 .68
+> moi tout à fait librement, et que probablement je c= 0 .68
+> especial de la cosa comprada. c= 0 .67
+> peccat homo in diuiciis nimis c= 0 .62
+
+Figure 1: Correctly annotated lines rejected by confidence-window filter-ing. The Adam optimizer was replaced with a hy-brid optimizer, applying Muon [16] to hidden lin-ear weights and AdamW to all remaining parame-ters, initially with the aim of accelerating conver-gence. 
+
+3.3 Experiments 
+
+The adapted tiny, small, and medium PP-OCRv6 variants are evaluated under four scenar-ios: generalized-model training for general-purpose, off-the-shelf recognition; training from scratch on a domain-specific corpus when no suit-able base model is available; fine-tuning a gener-alized model for the best project-specific accuracy; and few-shot adaptation for the highest possi-ble accuracy on a single manuscript. They are compared with the default CRNN recognizer of the kraken ATR software [18], a four-layer convolutional network followed by three 200-unit bidirectional LSTM layers trained with CTC. Training was performed on NVIDIA A40 GPUs, 4using two devices for the medium from-scratch runs and one otherwise. The generalized models were pretrained on a heterogeneous corpus combining hand-written, typed, and machine-printed in 37 different languages (ca. 6.2 million lines), and synthetic material (ca. one million lines). 1 Its held-out test split contains approximately 83000 lines in 33 languages. Almost all CATMuS and MAKHZAN training material is included in the pretraining corpus, while their evaluation sets remain held out. The principal domain-specific evaluation uses CATMuS Medieval [7]. After removal of 7000 lines for validation, approximately 142000 lines from 300 manuscripts remain. CATMuS is relatively large for a historical ATR dataset and uniform domain-specific datasets are frequently substantially smaller. The training lines are therefore divided into nested 25, 50, 75, 90, and 100% tiers, each retaining all manuscripts, emulating these smaller training corpora. For from-scratch training, each model is trained for a number of steps equivalent to 20 epochs on the complete corpus; the number of epochs is increased inversely with tier size so that all runs process the same number of line images. Fine-tuning is performed for eight epochs. Evaluation uses the ICDAR 2026 Competition on Multilingual Medieval Handwriting Recognition (CMMHWR) test set [19]: French, Latin, and Spanish test transfer to languages represented in CATMuS (task 1), Occitan tests transfer within the Romance family (task 2), and Czech tests cross-family transfer (task 3). A randomly sampled test set used for quality estimation during the creation of the CoMMA corpus [6] 2
+
+provides an additional, more distant evaluation on medieval Latin and French material. 
+
+Table 1: Generalized-model performance.                     
+
+> CER WER Model Params. (M) Micro Macro Micro Macro kraken CRNN 4.64 10.84 12.41 34.63 39.23 PP-OCRv6 tiny 0.68 14.25 15.24 43.52 47.35 PP-OCRv6 small 3.22 9.33 9.80 30.38 33.91 PP-OCRv6 medium 15.86 7.03 7.15 23.36 26.24
+
+Accuracy is also compared with Medusa, a Qwen3.5-9B line recognizer submitted at CMMHWR [22], as an ex-ample of the recognition capabilities of current large VLMs. Medusa is evalu-ated through the authors’ DocWorkflow pipeline, including its CATMuS-specific post-processing. VLMs often struggle with historical hands and diplomatic tran-scription norms in zero-shot settings, therefore a system that has been tuned to-wards the evaluated corpora provides a fairer comparison. To test whether the observed transfer behaviour is specific to Latin script, e.g., due to a larger and more diverse sample of Latin-script material in the pretraining dataset, zero-shot and fine-tuning evaluation is repeated on the Arabic, Persian, and Ottoman Turkish subsets of OpenITI MAKHZAN [1], a corpus of historical handwritten Arabic-script material. In contrast to the medieval Latin-script evaluation, the test set is not document-disjoint due to the construction of the pretraining corpus. Few-shot manuscript-specific adaptation was evaluated separately on four CMMHWR test pages using between 20 and 240 training lines. Each page was divided into a training pool and a fixed same-page evaluation set. Up to five disjoint samples were drawn at each budget, depending on the size of the training pool, and each sample was used in five training runs. Every run received 300 optimizer steps.                 
+
+> 1Model weights and afull corpus inventory are available on Zenodo https://doi.org/10. 5281/zenodo.21788403 ;https://doi.org/10.5281/zenodo.21788405 ; and https://doi.org/10.5281/ zenodo.21788410 .
+> 2The test set is available on Zenodo at https://zenodo.org/records/anonymized .
+
+5Table 2: Architecture adaptation ablation (task 1 macro CER, %).            
+
+> Variant 48 px 96 px 96 px + AdamW/Muon PP-OCRv6 tiny 24.05 12.57 13.13 PP-OCRv6 small 19.28 10.54 10.50 PP-OCRv6 medium
+> 18.35 10.10 9.77
+
+In all experiments, CER and WER are computed after NFD normalization and the normalization of all whitespace to 
+
+U+0020 . Runtime is measured on identical line images using an NVIDIA A40 and an Intel Xeon Silver 4316. 
+
+4 Analysis 
+
+4.1 Generalized models 
+
+The generalized models are first evaluated on the held-out 33-language pretraining test set. As shown in Table 1, PP-OCRv6 small and medium outperform the kraken baseline in both character and word error rate, whereas the tiny variant performs worse. The progression of error rates from tiny to medium is substantial, reducing macro CER from 15.2% to 7.2%, which indicates that model capacity is the primary limitation when learning from a highly heterogeneous corpus. 
+
+4.2 CATMuS, CMMHWR, and CoMMA 
+
+The effects of the adaptations to PP-OCRv6 explained above are shown in Table 2. As re-moval of confidence-window filtering and fixed-width resizing is a prerequisite for historical ATR, only the line height and optimizer change were ablated. Increasing the line height accounts for almost all of the improvement, reducing CMMHWR task 1 macro CER by 8.3-11.5 percentage points. Muon with AdamW was initially adopted to accelerate convergence, but produces scores broadly in line with pure Adam training. Adam training at 96 pixels was also found to be less stable, whereas no corresponding failures were observed with the hybrid optimizer. The 96-pixel configuration with Muon and AdamW is therefore used for the remaining PP-OCRv6 experiments. 
+
+Table 3: CATMuS from-scratch results (CER; WER in parentheses, %).                             
+
+> Test set kraken CRNN PP-OCRv6 Tiny Small Medium
+> CMMHWR
+> Task 1: French 4.32 (18.52 )7.34 (31.23) 5.39 (23.94) 4.94 (22.22) Task 1: Latin 11.00 (44.92 ) 16.41 (62.00) 13.32 (54.06) 12.17 (50.98) Task 1: Span-ish
+> 11.85 (39.24 ) 15.65 (49.35) 12.79 (42.57) 12.21 (42.17) Task 2: Occi-tan
+> 8.69 (39.55 ) 12.04 (51.87) 9.70 (44.82) 9.30 (44.31) Task 3: Czech 26.67 ( 79.76 ) 28.16 (81.61) 25.93 (80.56) 25.99 (80.33)
+> CoMMA
+> Latin 12.77 (45.98 ) 17.23 (59.79) 14.07 (52.49) 13.54 (51.39) French 22.63 (55.79 ) 27.62 (65.40) 24.05 (58.98) 24.31 (58.59)
+
+The full-corpus from-scratch results are reported in Table 3. The kraken CRNN obtains lower CER and WER on task 1, task 2, and CoMMA. PP-OCRv6 small and medium have marginally lower CER on Czech, but not lower WER. The effect of pretrain-ing the generalized models and subsequent CATMuS fine-tuning is shown in Figure 2. The isolated markers give the scores of models trained from scratch on the complete cor-pus; the connected series begin with the zero-shot generalized models and continue over the five fine-tuning tiers; the dashed line gives the Medusa result. Fine-tuning on only 25% of CATMuS improves every PP-OCRv6 variant over its counterpart trained from scratch on the complete corpus across all seven test sets. More fine-tuning data generally reduces error on task 1, task 2, and CoMMA. On Czech, however, every generalized model 6performs best zero-shot and performance tends to deteriorate as more CATMuS data are introduced. PP-OCRv6 medium also outperforms Medusa at this point, with 12.4% CER against 15.7%, before CATMuS fine-tuning reverses the ordering. This indicates forgetting of cross-family knowledge acquired during pretraining. Scratch 0 25 50 75 90 100 
+
+> 6810 12 14
+> CER (%)
+
+CMMHWR task 1         
+
+> kraken CRNN PP-OCRv6 tiny PP-OCRv6 small PP-OCRv6 medium Medusa Scratch 025 50 75 90 100
+> 6810 12 14
+
+CMMHWR task 2      
+
+> Scratch 025 50 75 90 100
+> 15 20 25 30
+
+CATMuS fine-tuning data (%) CER (%) CMMHWR task 3      
+
+> Scratch 025 50 75 90 100
+> 16 18 20 22 24
+
+CATMuS fine-tuning data (%) CoMMA 
+
+Figure 2: CATMuS training and fine-tuning by evaluation set. Table 4 compares the fully fine-tuned generalized models with Medusa. PP-OCRv6 medium obtains lower CER and WER on task 1 and CoMMA, while Medusa remains better on Occitan and Czech. The generalized-model pretraining corpus contains no Oc-citan and only minuscule amounts of Czech, while CATMuS contains neither language. Medusa, in contrast, was trained on extensive Occitan and Czech material [22], explaining its better scores on tasks 2 and 3. 7Table 4: CATMuS-adapted models and Medusa (CER; WER in parentheses, %). Test set kraken CRNN PP-OCRv6 Medusa a
+
+Tiny Small Medium 
+
+CMMHWR 
+
+Task 1: French 5.01 (21.29) 6.26 (27.52) 4.07 (18.69) 3.36 (15.81 ) 3.74 (15.91) 
+
+Task 1: Latin 12.61 (51.03) 13.19 (54.22) 10.05 (44.26) 8.70 (39.67 ) 13.07 (43.96) 
+
+Task 1: Spanish 10.47 (38.03) 11.91 (41.50) 8.74 (33.90) 7.99 (31.02 ) 11.19 (32.74) 
+
+Task 2: Occitan 8.38 (39.23) 9.51 (44.42) 7.35 (38.57) 6.62 (36.03) 5.70 (21.91 )
+
+Task 3: Czech 19.84 (72.15) 24.37 (78.92) 19.86 (72.20) 18.05 (70.29) 15.73 (64.94 )
+
+CoMMA 
+
+Latin 13.48 (50.89) 13.83 (53.19) 11.52 (45.36) 11.30 (42.60 ) 16.08 (45.54) 
+
+French 21.65 (54.44) 23.14 (58.66) 21.50 (53.50) 21.36 (51.39 ) 28.24 (55.74)  
+
+> aThe task 1-3 CERs of 8.03%, 5.24%, and 10.8% reported for Medusa [22] could not be reproduced with the released DocWorkflow pipeline. The values shown here were obtained with that pipeline and its documented configuration.
+
+4.3 Few-shot adaptation 
+
+The few-shot results are shown in Figure 3. A budget of zero indicates zero-shot accuracy of the generalized model. Relative to this starting point, the kraken baseline improves with only 20 training lines on all four manuscripts. PP-OCRv6 instead performs worse after 20 lines, improves after 40 lines on one manuscript and after 80 lines on two others, and does not improve within the maximum available budget of 80 lines on the fourth. This provides limited evidence that the recurrent baseline is more effective in the extreme few-shot regime. The slower improvement of PP-OCRv6 is offset by its lower absolute CER, which is below that of the baseline on all four manuscripts from 40 training lines onwards. Variation across data draws and training runs is small: with one exception, the com-bined standard deviation remains below 0.8 percentage points and falls below 0.4 per-centage points from 80 training lines onwards. PP-OCRv6 is nevertheless somewhat more variable than the baseline at the smallest budgets, where it does not improve upon the base model. 80 40 80 160 240 510 15             
+
+> CER (%) French: BnF Français 110, f. 3
+> kraken CRNN PP-OCRv6 medium 020 40 80 120 510 15
+> Latin: Q419181, f. 23
+> 020 40 80 120 510 15
+> Fine-tuning lines (0 = zero-shot) CER (%) French: BnF Français 173, f. 158
+> 020 40 80 510 15
+> Fine-tuning lines (0 = zero-shot) Latin: Q64897, f. 49
+
+Figure 3: Few-shot CER by manuscript and training-set size. 
+
+4.4 Arabic-script transfer 
+
+Table 5 reports the MAKHZAN results by language and as an unweighted macro average, reproducing the model ranking observed on the Latin-script evaluations. PP-OCRv6 small and medium outperform the kraken baseline in macro CER and WER both zero-shot and after fine-tuning, while the tiny model does not. PP-OCRv6 medium is already the strongest model zero-shot, and its macro CER increases slightly from 18.0% to 18.8% after fine-tuning. The persistence of this performance gap on Arabic-script material makes it unlikely that the Latin-script results arise merely from an interaction between the larger volume of Latin-script pretraining data and the greater effective capacity of PP-OCRv6. 
+
+Table 5: MAKHZAN recognition results (CER; WER in parentheses, %). Evaluation kraken CRNN PP-OCRv6 Tiny Small Medium 
+
+Generalized models, zero-shot 
+
+Arabic 24.46 (70.97) 28.16 (81.57) 20.67 (66.02) 16.05 (52.95 )
+
+Persian 36.42 (86.84) 39.19 (90.08) 30.35 (80.53) 24.17 (70.32 )
+
+Ottoman Turkish 20.21 (67.88) 22.57 (73.72) 17.84 (64.72) 13.76 (53.91 )
+
+Macro 27.03 (75.23) 29.98 (81.79) 22.95 (70.43) 17.99 (59.06 )
+
+Fine-tuned on MAKHZAN 
+
+Arabic 22.23 (66.61) 28.66 (76.37) 25.37 (70.80) 23.63 (65.94 )
+
+Persian 34.20 (84.32) 33.60 (84.15) 27.71 (75.88) 23.01 (67.52 )
+
+Ottoman Turkish 17.15 (61.88) 15.74 (58.73) 11.86 (48.61) 9.83 (41.65 )
+
+Macro 24.52 (70.94) 26.00 (73.08) 21.65 (65.09) 18.82 (58.37 )
+
+94.5 Inference speed 
+
+With PP-OCRv6 small, the improvement in recognition accuracy does not incur a sub-stantial reduction in throughput on GPU. Its generalized model reduces macro CER from 12.4 to 9.8% and it outperforms the kraken CRNN on almost all test sets after CATMuS fine-tuning. At the same time, it is faster up to batch size 16 and remains close at batch 32, as shown in Figure 4, processing approximately 610 instead of 640 lines per second. 1 4 8 16 32 0.1 110 100 1000        
+
+> Batch size Lines per second CPU
+> kraken CRNN PP-OCRv6 tiny PP-OCRv6 small PP-OCRv6 medium Medusa
+> 14816 32 0.1 110 100 1000
+> Batch size GPU
+
+Figure 4: Inference throughput by batch size. The results for tiny and medium reflect their respective model capacities. Tiny reaches approximately 1400 lines per second but is less accurate than the CRNN. Medium, which achieves the lowest overall error rates, is faster than the baseline only with batch size 1 and then levels off at approximately 260 lines per second. On the CPU, only tiny exceeds the CRNN. Even medium nevertheless remains approximately 45 times faster than Medusa. The A40 uses NVIDIA’s Ampere architecture; Hopper and Blackwell hardware and software optimizations are likely to increase PP-OCRv6 throughput relative to the recur-rent baseline. 
+
+5 Conclusion 
+
+PP-OCRv6 can be adapted to historical ATR without changing its basic architecture or substantially increasing its capacity. The main changes are an increased input line height, proportional line widths, and the omission of confidence-window filtering. After these adaptations, from-scratch training on CATMuS is competitive with the kraken CRNN, while generalized-model pretraining yields markedly better generalization. The medium model reduces macro CER on the 33-language test set from 12.4 to 7.2% and also transfers better to Arabic-script material. Corpus-specific fine-tuning further gives lower error rates than Medusa on CMMHWR task 1 and CoMMA. Only extreme few-shot adaptation remains less consistent, with PP-OCRv6 generally requiring 40-80 lines before improving on the base model. The adapted models preserve CTC decoding and add no language-generative mecha-nism associated with hallucination. The small variant most clearly offers the free lunch: lower generalized and fine-tuned error rates, fewer parameters, and comparable or higher GPU throughput than the CRNN. The medium variant improves accuracy further at the cost of peak batched throughput, but remains far less expensive than a large VLM. 10 Acknowledgements 
+
+This work was funded by the European Union under Grant Agreement No. 101132163 (ATRIUM) and No. 101071829 (MiDRASH). Views and opinions expressed are those of the authors only and do not necessarily reflect those of the European Union. This project also received funding from the BPI Scribe project. 11 References 
+
+[1] Allen, Jonathan Parkes et al. “OpenITI MAKHZAN: An Open Annotated Dataset of Arabic, Persian, Ottoman Turkish, and Urdu Print and Manuscript Data”. In: 
+
+Journal of Open Humanities Data 12 (2026), p. 69. doi : 10.5334/johd.465 .[2] Bai, Jinze, Bai, Shuai, Yang, Shusheng, Wang, Shijie, Tan, Sinan, Wang, Peng, Lin, Junyang, Zhou, Chang, and Zhou, Jingren. “Qwen-VL: A Versatile Vision–Language Model for Understanding, Localization, Text Reading, and Beyond”. 2023. arXiv: 
+
+2308.12966 [cs.CV] .[3] Barrere, Killian, Soullard, Yann, Lemaitre, Aurélie, and Coüasnon, Bertrand. “A Light Transformer-Based Architecture for Handwritten Text Recognition”. In: Doc-ument Analysis Systems . Springer, 2022, pp. 275–290. doi : 10.1007/978-3-031-06555-2_19 .[4] Barrere, Killian, Soullard, Yann, Lemaitre, Aurélie, and Coüasnon, Bertrand. “Train-ing Transformer Architectures on Few Annotated Data: An Application to Histori-cal Handwritten Text Recognition”. In: International Journal on Document Analysis and Recognition 27 , no. 4 (2024), pp. 553–566. doi : 10.1007/s10032-023-00459-2 .[5] Chaudhary, Kartik and Bali, Raghav. “Easter2.0: Improving Convolutional Models for Handwritten Text Recognition”. 2022. arXiv: 2205.14879 [cs.CV] .[6] Clérice, Thibault, Gabay, Simon, Vlachou-Efstathiou, Malamatenia, Pinche, Ar-iane, and Sagot, Benoît. “CoMMA, a Large-Scale Corpus of Multilingual Me-dieval Archives”. Working paper. 2025. url : https://inria.hal.science/hal-05299220 .[7] Clérice, Thibault et al. “CATMuS Medieval: A Multilingual Large-Scale Cross-Century Dataset in Latin Script for Handwritten Text Recognition and Beyond”. In: Document Analysis and Recognition—ICDAR 2024 . Springer, 2024, pp. 174–194. 
+
+doi : 10.1007/978-3-031-70543-4_11 .[8] Coquenet, Denis, Chatelain, Clement, and Paquet, Thierry. “Recurrence-free un-constrained handwritten text recognition using gated fully convolutional network”. In: 2020 17th International Conference on Frontiers in Handwriting Recognition (ICFHR) . IEEE, Sept. 2020, 15, p. 15. doi : 10.1109/ICFHR2020.2020.00015 .[9] Coquenet, Denis, Chatelain, Clément, and Paquet, Thierry. “DAN: A Segmentation-Free Document Attention Network for Handwritten Document Recognition”. In: 
+
+IEEE Transactions on Pattern Analysis and Machine Intelligence 45 , no. 7 (Jan. 2023), pp. 8227–8243. doi : 10.1109/TPAMI.2023.3235826 .[10] Cui, Cheng et al. “PP-OCRv5: A Specialized 5M-Parameter Model Rivaling Billion-Parameter Vision–Language Models on OCR Tasks”. 2026. arXiv: 2603 . 24373 [cs.CV] .[11] Du, Yongkun, Chen, Zhineng, Xie, Hongtao, Jia, Caiyan, and Jiang, Yu-Gang. “SVTRv2: CTC Beats Encoder–Decoder Models in Scene Text Recognition”. In: 
+
+Proceedings of the IEEE/CVF International Conference on Computer Vision . 2025, pp. 20147–20156. [12] Fujitake, Masato. “DTrOCR: Decoder-Only Transformer for Optical Character Recognition”. 2023. arXiv: 2308.15996 [cs.CV] .[13] Gao, Yunze, Chen, Yingying, Wang, Jinqiao, Tang, Ming, and Lu, Hanqing. “Read-ing Scene Text with Fully Convolutional Sequence Modeling”. In: Neurocomputing 339 (2019), pp. 161–170. doi : 10.1016/j.neucom.2019.01.094 .12 [14] Garrido-Muñoz, Carlos and Calvo-Zaragoza, Jorge. “On the Generalization of Hand-written Text Recognition Models”. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 2025, pp. 15275–15286. [15] Graves, Alex, Fernández, Santiago, Gomez, Faustino, and Schmidhuber, Jürgen. “Connectionist Temporal Classification: Labelling Unsegmented Sequence Data with Recurrent Neural Networks”. In: Proceedings of the 23rd International Conference on Machine Learning . 2006, pp. 369–376. doi : 10.1145/1143844.1143891 .[16] Jordan, Keller, Jin, Yuchen, Boza, Vlado, You, Jiacheng, Cesista, Franz, Newhouse, Laker, and Bernstein, Jeremy. “Muon: An Optimizer for Hidden Layers in Neural Networks”. 2024. url : https://kellerjordan.github.io/posts/muon/ (visited on 08/12/2026). [17] Karamolegkou, Antonia, Angleraud, Nicolas, Sagot, Benoît, and Clérice, Thibault. “Reading or Guessing? Visual Grounding Failures of Vision–Language Models for OCR in Ancient Greek Editions”. 2026. arXiv: 2605.27750 [cs.CL] .[18] Kiessling, Benjamin. “Version 5 of the Kraken ATR Engine for the Humanities”. In: International Conference on Document Analysis and Recognition . 2025. url :
+
+https://hal.science/hal-05144723 .[19] Kiessling, Benjamin, Boutreux, Agnès, Cars, Bram, Gille Levenson, Matthias, Keste-mont, Mike, Michalcová, Anna, Pinche, Ariane, Vandyck, Caroline, Efstathiou, Malamatenia Vlachou, and Clérice, Thibault. “ICDAR 2026 Competition on Multi-lingual Medieval Handwriting Recognition”. working paper or preprint. Apr. 2026. 
+
+url : https://inria.hal.science/hal-05608045 .[20] Li, Minghao, Lv, Tengchao, Chen, Jingye, Cui, Lei, Lu, Yijuan, Florencio, Dinei, Zhang, Cha, Li, Zhoujun, and Wei, Furu. “TrOCR: Transformer-Based Optical Char-acter Recognition with Pre-Trained Models”. In: Proceedings of the AAAI Confer-ence on Artificial Intelligence . Vol. 37. 11. 2023, pp. 13094–13102. doi : 10.1609/ aaai.v37i11.26538 .[21] Li, Yuting, Chen, Dexiong, Tang, Tinglong, and Shen, Xi. “HTR-VT: Handwritten Text Recognition with Vision Transformer”. In: Pattern Recognition 158 (2025), p. 110967. doi : 10.1016/j.patcog.2024.110967 .[22] Moins, Théo et al. “MEDUSA 0.1: Medieval European Documents Unified System for Automated Text Recognition”. System report for the ICDAR 2026 Competition on Multilingual Medieval Handwritten Text Recognition. 2026. url : https://enc. hal.science/hal-05600991 .[23] Puigcerver, Joan. “Are Multidimensional Recurrent Layers Really Necessary for Handwritten Text Recognition?” In: 14th IAPR International Conference on Docu-ment Analysis and Recognition . 2017, pp. 67–72. doi : 10.1109/ICDAR.2017.20 .[24] PyLaia Contributors. “Dataset Formatting”. 2024. url : https://doc.teklia.com/ pylaia/usage/datasets/format/ (visited on 08/02/2026). [25] Semnani, Sina, Zhang, Han, He, Xinyan, Tekgürler, Merve, and Lam, Monica. “Churro: Making history readable with an open-weight large vision-language model for high-accuracy, low-cost historical text recognition”. In: Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing . 2025, pp. 34765– 34812. 13 [26] Sheng, Fenfen, Chen, Zhineng, and Xu, Bo. “NRTR: A no-recurrence sequence-to-sequence model for scene text recognition”. In: 2019 International conference on document analysis and recognition (ICDAR) . IEEE. 2019, pp. 781–786. [27] Shi, Baoguang, Bai, Xiang, and Yao, Cong. “An End-to-End Trainable Neural Net-work for Image-Based Sequence Recognition and Its Application to Scene Text Recognition”. In: IEEE Transactions on Pattern Analysis and Machine Intelligence 39 , no. 11 (2017), pp. 2298–2304. doi : 10.1109/TPAMI.2016.2646371 .[28] Such, Felipe Petroski, Peri, Dheeraj, Brockler, Frank, Hutkowski, Paul, and Ptucha, Raymond W. “Fully Convolutional Networks for Handwriting Recognition”. In: 2018 16th International Conference on Frontiers in Handwriting Recognition . IEEE, 2018, pp. 86–91. doi : 10.1109/ICFHR-2018.2018.00024 .[29] Taghadouini, Said, Cavaillès, Adrien, and Aubertin, Baptiste. “LightOnOCR: A 1B End-to-End Multilingual Vision–Language Model for State-of-the-Art OCR”. 2026. arXiv: 2601.14251 [cs.CV] .[30] Tensmeyer, Chris and Wigington, Curtis. “Training Full-Page Handwritten Text Recognition Models without Annotated Line Breaks”. In: 2019 International Con-ference on Document Analysis and Recognition . IEEE, 2019, pp. 1–8. doi : 10.1109/ ICDAR.2019.00011 .[31] Tesseract OCR Contributors. “Overview of the New Neural Network System in Tesseract 4.00”. 2018. url : https://tesseract-ocr.github.io/tessdoc/tess4/ NeuralNetsInTesseract4.00.html (visited on 08/02/2026). [32] Tesseract OCR Contributors. “Training Tesseract 4.00”. 2018. url : https : / / tesseract - ocr . github . io / tessdoc / tess4 / TrainingTesseract - 4 . 00 . html 
+
+(visited on 08/02/2026). [33] Wick, Christoph, Reul, Christian, and Puppe, Frank. “Calamari—A High-Performance TensorFlow-Based Deep Learning Package for Optical Character Recognition”. In: 
+
+Digital Humanities Quarterly 14 , no. 2 (2020). arXiv: 1807.02004 .[34] Yousef, Mohamed and Bishop, Tom E. “OrigamiNet: Weakly-Supervised, Segmentation-Free, One-Step, Full Page Text Recognition by Learning to Unfold”. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 2020, pp. 14710–14719. [35] Yousef, Mohamed, Hussain, Khaled F., and Mohammed, Usama S. “Accurate, Data-Efficient, Unconstrained Text Recognition with Convolutional Neural Networks”. In: 
+
+Pattern Recognition 108 (2020), p. 107482. doi : 10.1016/j.patcog.2020.107482 .[36] Zhang, Yubo et al. “PP-OCRv6: From 1.5M to 34.5M Parameters, Surpassing Billion-Scale VLMs on OCR Tasks”. 2026. arXiv: 2606.13108 [cs.CV] .14

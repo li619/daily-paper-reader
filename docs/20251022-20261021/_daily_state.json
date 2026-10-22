@@ -1,0 +1,697 @@
+{
+  "date": "20251022-20261021",
+  "date_label": "2025-10-22 ～ 2026-10-21",
+  "generated_at": "2026-10-22T10:41:14.847714+00:00",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.35473v1",
+      "route": "20251022-20261021/2609.35473v1",
+      "title": "Handwritten Text Recognition Lives in the High-Pixel Variance Subspace",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.396572+00:00",
+      "updated_at": "2026-10-22T10:41:14.396572+00:00"
+    },
+    {
+      "paper_id": "2609.20064v1",
+      "route": "20251022-20261021/2609.20064v1",
+      "title": "A Free Lunch? Adapting PP-OCRv6 for Historical Text Recognition",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "评估轻量识别器在历史文本识别中的适配与泛化，属OCR模型评测专题。",
+      "first_seen_at": "2026-10-22T10:41:14.390245+00:00",
+      "updated_at": "2026-10-22T10:41:14.390245+00:00"
+    },
+    {
+      "paper_id": "2609.12705v1",
+      "route": "20251022-20261021/2609.12705v1",
+      "title": "ExpertHTR: Unified Handwritten Text Recognition with Multi-Task Learning and Sparse Mixture-of-Experts",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向异构手写资源统一识别，涉及多任务学习与稀疏专家架构。",
+      "first_seen_at": "2026-10-22T10:41:14.384279+00:00",
+      "updated_at": "2026-10-22T10:41:14.384279+00:00"
+    },
+    {
+      "paper_id": "2608.01646v1",
+      "route": "20251022-20261021/2608.01646v1",
+      "title": "Spike-HTR: Spiking Neural Transformer for Handwritten Text Recognition",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向手写文本识别的脉冲神经网络高效时序建模与序列压缩方法。",
+      "first_seen_at": "2026-10-22T10:41:14.378674+00:00",
+      "updated_at": "2026-10-22T10:41:14.378674+00:00"
+    },
+    {
+      "paper_id": "2606.24302v1",
+      "route": "20251022-20261021/2606.24302v1",
+      "title": "TrOCR for Medieval HTR: A Systematic Ablation Study with Cross-Dataset Validation",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "围绕中世纪手稿HTR的TrOCR微调消融与跨数据集验证，属手写文本识别适配专题。",
+      "first_seen_at": "2026-10-22T10:41:14.373227+00:00",
+      "updated_at": "2026-10-22T10:41:14.373227+00:00"
+    },
+    {
+      "paper_id": "2606.19139v1",
+      "route": "20251022-20261021/2606.19139v1",
+      "title": "Urdu Katib Handwritten Dataset: A Historical Document Dataset for Offline Urdu Handwritten Text Recognition with CRNN-Based Baseline Evaluation",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "提供乌尔都文历史手写数据集与CRNN基线，支撑草书手写识别研究。",
+      "first_seen_at": "2026-10-22T10:41:14.368302+00:00",
+      "updated_at": "2026-10-22T10:41:14.368302+00:00"
+    },
+    {
+      "paper_id": "2605.05900v1",
+      "route": "20251022-20261021/2605.05900v1",
+      "title": "Understanding Cross-Language Transfer Improvements in Low-Resource HTR: The Role of Sequence Modeling",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "该文分析低资源多语种手写识别中序列建模对跨语言迁移的作用，与低资源文本识别专题相关。",
+      "first_seen_at": "2026-10-22T10:41:14.363607+00:00",
+      "updated_at": "2026-10-22T10:41:14.363607+00:00"
+    },
+    {
+      "paper_id": "2605.02089v2",
+      "route": "20251022-20261021/2605.02089v2",
+      "title": "Cross-Lingual Learning within Arabic Script for Low-Resource HTR",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向阿拉伯字母低资源手写文本识别，验证跨语言联合训练对缓解标注稀缺的作用。",
+      "first_seen_at": "2026-10-22T10:41:14.359401+00:00",
+      "updated_at": "2026-10-22T10:41:14.359401+00:00"
+    },
+    {
+      "paper_id": "2602.17387v1",
+      "route": "20251022-20261021/2602.17387v1",
+      "title": "DRetHTR: Linear-Time Decoder-Only Retentive Network for Handwritten Text Recognition",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向手写文本识别的高效线性解码模型，属序列识别与高效注意力专题。",
+      "first_seen_at": "2026-10-22T10:41:14.355496+00:00",
+      "updated_at": "2026-10-22T10:41:14.355496+00:00"
+    },
+    {
+      "paper_id": "2512.17111v2",
+      "route": "20251022-20261021/2512.17111v2",
+      "title": "Digitizing Nepal's Written Heritage: A Comprehensive HTR Pipeline for Old Nepali Manuscripts",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向低资源古尼泊尔语手写文献，构建端到端识别流水线并公开代码，属手写文本识别专题。",
+      "first_seen_at": "2026-10-22T10:41:14.351907+00:00",
+      "updated_at": "2026-10-22T10:41:14.351907+00:00"
+    },
+    {
+      "paper_id": "2512.05021v1",
+      "route": "20251022-20261021/2512.05021v1",
+      "title": "HTR-ConvText: Leveraging Convolution and Textual Information for Handwritten Text Recognition",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "该论文聚焦手写文本识别中的特征建模与低资源泛化，属于文档分析与文字识别专题。",
+      "first_seen_at": "2026-10-22T10:41:14.347379+00:00",
+      "updated_at": "2026-10-22T10:41:14.347379+00:00"
+    },
+    {
+      "paper_id": "2609.37195v1",
+      "route": "20251022-20261021/2609.37195v1",
+      "title": "Exploring In-Context Learning for Handwritten Text Recognition",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.492934+00:00",
+      "updated_at": "2026-10-22T10:41:14.492934+00:00"
+    },
+    {
+      "paper_id": "2609.16859v1",
+      "route": "20251022-20261021/2609.16859v1",
+      "title": "Measuring Annotation Efficiency for Handwritten Devanagari Recognition: Sample-Complexity Curves for Four Pretraining Regimes",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.482591+00:00",
+      "updated_at": "2026-10-22T10:41:14.482591+00:00"
+    },
+    {
+      "paper_id": "2606.23524v1",
+      "route": "20251022-20261021/2606.23524v1",
+      "title": "Scaling State-Space Models from Lines to Paragraphs: An Ablation of Mamba-based OCR",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.472617+00:00",
+      "updated_at": "2026-10-22T10:41:14.472617+00:00"
+    },
+    {
+      "paper_id": "2606.18884v1",
+      "route": "20251022-20261021/2606.18884v1",
+      "title": "Performance Gap Analysis between Latin and Arabic Scripts HTR",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.462959+00:00",
+      "updated_at": "2026-10-22T10:41:14.462959+00:00"
+    },
+    {
+      "paper_id": "2606.15987v2",
+      "route": "20251022-20261021/2606.15987v2",
+      "title": "A Text Recognition Dataset from Sahidic Coptic Ancient Manuscripts",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.453830+00:00",
+      "updated_at": "2026-10-22T10:41:14.453830+00:00"
+    },
+    {
+      "paper_id": "2605.30235v1",
+      "route": "20251022-20261021/2605.30235v1",
+      "title": "BullingerDB: A Dataset for Handwritten Text Recognition and Writer Retrieval",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.442488+00:00",
+      "updated_at": "2026-10-22T10:41:14.442488+00:00"
+    },
+    {
+      "paper_id": "2604.09713v1",
+      "route": "20251022-20261021/2604.09713v1",
+      "title": "Zero-Shot Synthetic-to-Real Handwritten Text Recognition via Task Analogies",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.434072+00:00",
+      "updated_at": "2026-10-22T10:41:14.434072+00:00"
+    },
+    {
+      "paper_id": "2604.00725v2",
+      "route": "20251022-20261021/2604.00725v2",
+      "title": "A Benchmark of State-Space Models vs. Transformers and BiLSTM-based Models for Historical Newspaper OCR",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.425865+00:00",
+      "updated_at": "2026-10-22T10:41:14.425865+00:00"
+    },
+    {
+      "paper_id": "2603.29450v1",
+      "route": "20251022-20261021/2603.29450v1",
+      "title": "Few-shot Writer Adaptation via Multimodal In-Context Learning",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.418114+00:00",
+      "updated_at": "2026-10-22T10:41:14.418114+00:00"
+    },
+    {
+      "paper_id": "2603.03930v2",
+      "route": "20251022-20261021/2603.03930v2",
+      "title": "N-gram Injection into Transformers for Dynamic Language Model Adaptation in Handwritten Text Recognition",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.410684+00:00",
+      "updated_at": "2026-10-22T10:41:14.410684+00:00"
+    },
+    {
+      "paper_id": "2512.18865v1",
+      "route": "20251022-20261021/2512.18865v1",
+      "title": "Application of deep learning approaches for medieval historical documents transcription",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.403491+00:00",
+      "updated_at": "2026-10-22T10:41:14.403491+00:00"
+    },
+    {
+      "paper_id": "2610.24060v1",
+      "route": "20251022-20261021/2610.24060v1",
+      "title": "Generative Text Modelling and Language-Guided Visual Attention for Deciphering Palimpsests",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.652412+00:00",
+      "updated_at": "2026-10-22T10:41:14.652412+00:00"
+    },
+    {
+      "paper_id": "2608.28195v1",
+      "route": "20251022-20261021/2608.28195v1",
+      "title": "UniLipi: A Unified Multi-Script OCR for Historical Indic Manuscripts",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.637897+00:00",
+      "updated_at": "2026-10-22T10:41:14.637897+00:00"
+    },
+    {
+      "paper_id": "2608.25140v1",
+      "route": "20251022-20261021/2608.25140v1",
+      "title": "RefLAM: A Reference-Grounded Line Annotation Pipeline for Historical Arabic Manuscripts",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.623878+00:00",
+      "updated_at": "2026-10-22T10:41:14.623878+00:00"
+    },
+    {
+      "paper_id": "2608.18586v1",
+      "route": "20251022-20261021/2608.18586v1",
+      "title": "OmniHandwritingOCR: A Diagnostic Benchmark for Evaluating Multimodal LLMs in Handwritten OCR Scenarios",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.610125+00:00",
+      "updated_at": "2026-10-22T10:41:14.610125+00:00"
+    },
+    {
+      "paper_id": "2608.05848v1",
+      "route": "20251022-20261021/2608.05848v1",
+      "title": "DTRNet: Dual Text-Radical Decoding for Handwritten Chinese Text Recognition with Faked Character Detection",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.596765+00:00",
+      "updated_at": "2026-10-22T10:41:14.596765+00:00"
+    },
+    {
+      "paper_id": "2603.28028v1",
+      "route": "20251022-20261021/2603.28028v1",
+      "title": "Efficient Domain Adaptation for Text Line Recognition via Decoupled Language Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.583727+00:00",
+      "updated_at": "2026-10-22T10:41:14.583727+00:00"
+    },
+    {
+      "paper_id": "2602.18089v1",
+      "route": "20251022-20261021/2602.18089v1",
+      "title": "DohaScript: A Large-Scale Multi-Writer Dataset for Continuous Handwritten Hindi Text",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.570903+00:00",
+      "updated_at": "2026-10-22T10:41:14.570903+00:00"
+    },
+    {
+      "paper_id": "2601.17040v1",
+      "route": "20251022-20261021/2601.17040v1",
+      "title": "FP-THD: Full page transcription of historical documents",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.557883+00:00",
+      "updated_at": "2026-10-22T10:41:14.557883+00:00"
+    },
+    {
+      "paper_id": "2512.18004v1",
+      "route": "20251022-20261021/2512.18004v1",
+      "title": "Seeing Justice Clearly: Handwritten Legal Document Translation with OCR and Vision-Language Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.545817+00:00",
+      "updated_at": "2026-10-22T10:41:14.545817+00:00"
+    },
+    {
+      "paper_id": "2512.01348v1",
+      "route": "20251022-20261021/2512.01348v1",
+      "title": "Handwritten Text Recognition for Low Resource Languages",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.533881+00:00",
+      "updated_at": "2026-10-22T10:41:14.533881+00:00"
+    },
+    {
+      "paper_id": "2610.12363v1",
+      "route": "20251022-20261021/2610.12363v1",
+      "title": "HANS: A Handwritten Answer Sheet Dataset for Noisy Hybrid Document Parsing",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.847714+00:00",
+      "updated_at": "2026-10-22T10:41:14.847714+00:00"
+    },
+    {
+      "paper_id": "2609.03595v1",
+      "route": "20251022-20261021/2609.03595v1",
+      "title": "How Far Can Synthetic Data Take Thai OCR?",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.829388+00:00",
+      "updated_at": "2026-10-22T10:41:14.829388+00:00"
+    },
+    {
+      "paper_id": "2608.30213v1",
+      "route": "20251022-20261021/2608.30213v1",
+      "title": "Towards a Joint Khmer Text Recognition and Word Segmentation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.810917+00:00",
+      "updated_at": "2026-10-22T10:41:14.810917+00:00"
+    },
+    {
+      "paper_id": "2608.26500v1",
+      "route": "20251022-20261021/2608.26500v1",
+      "title": "Systematic Literature Review of Machine Learning Models and Applications for Text Recognition",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.792962+00:00",
+      "updated_at": "2026-10-22T10:41:14.792962+00:00"
+    },
+    {
+      "paper_id": "2608.22959v1",
+      "route": "20251022-20261021/2608.22959v1",
+      "title": "WildHandBench: A Benchmark for Handwritten Text Understanding that Challenges MLLMs and Humans",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.771272+00:00",
+      "updated_at": "2026-10-22T10:41:14.771272+00:00"
+    },
+    {
+      "paper_id": "2607.15509v3",
+      "route": "20251022-20261021/2607.15509v3",
+      "title": "LLM-Driven AutoML for Cross-Lingual Handwritten OCR: Closed-Loop Neural Architecture Search with GPT-5, GPT-4o, and Claude Sonnet 4",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.751375+00:00",
+      "updated_at": "2026-10-22T10:41:14.751375+00:00"
+    },
+    {
+      "paper_id": "2606.04166v1",
+      "route": "20251022-20261021/2606.04166v1",
+      "title": "End-to-End Text Line Detection and Ordering",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.734395+00:00",
+      "updated_at": "2026-10-22T10:41:14.734395+00:00"
+    },
+    {
+      "paper_id": "2604.20813v1",
+      "route": "20251022-20261021/2604.20813v1",
+      "title": "Adapting TrOCR for Printed Tigrinya Text Recognition: Word-Aware Loss Weighting for Cross-Script Transfer Learning",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.717699+00:00",
+      "updated_at": "2026-10-22T10:41:14.717699+00:00"
+    },
+    {
+      "paper_id": "2603.03580v1",
+      "route": "20251022-20261021/2603.03580v1",
+      "title": "An Effective Data Augmentation Method by Asking Questions about Scene Text Images",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.701496+00:00",
+      "updated_at": "2026-10-22T10:41:14.701496+00:00"
+    },
+    {
+      "paper_id": "2603.02805v1",
+      "route": "20251022-20261021/2603.02805v1",
+      "title": "ScribeTokens: Fixed-Vocabulary Tokenization of Digital Ink",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.684836+00:00",
+      "updated_at": "2026-10-22T10:41:14.684836+00:00"
+    },
+    {
+      "paper_id": "2601.16713v4",
+      "route": "20251022-20261021/2601.16713v4",
+      "title": "A Human-in-the-Loop Label Error Detection Framework Applied to Arabic-Script HTR Datasets",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "hf"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "",
+      "first_seen_at": "2026-10-22T10:41:14.667356+00:00",
+      "updated_at": "2026-10-22T10:41:14.667356+00:00"
+    }
+  ]
+}

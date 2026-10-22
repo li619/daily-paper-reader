@@ -1,0 +1,318 @@
+Title: Cross-Lingual Learning within Arabic Script for Low-Resource HTR
+
+URL Source: https://arxiv.org/pdf/2605.02089v2
+
+Published Time: Thu, 18 Jun 2026 00:43:15 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# Cross-Lingual Learning within Arabic Script for Low-Resource HTR 
+
+Sana Al-azzawi [0000 −0001 −7924 −4953] , Elisa Barney [0000 −0003 −2039 −3844] , and Marcus Liwicki [0000 −0003 −4029 −6574] 
+
+Luleå University of Technology Department of Computer Science, Electrical and Space Engineering Luleå, 97187, Sweden 
+
+sana.al-azzawi@ltu.se, elisa.barney@ltu.se, marcus.liwicki@ltu.se 
+
+Abstract. Handwritten Text Recognition (HTR) with limited labeled data remains a challenging problem, particularly for Arabic-script lan-guages. Although modern sequence-based recognizers perform well in high-resource settings, their accuracy degrades sharply as training data becomes scarce. Arabic-script languages share a common writing sys-tem with substantial character overlap, motivating cross-lingual learn-ing as a strategy to mitigate data scarcity. We conduct a controlled line-level study of cross-lingual joint training for Arabic-script HTR un-der low-resource regimes (number of samples K ∈ 100 , 500 , 1000 labeled lines) on Arabic (KHATT), Urdu (NUST-UHWR) and Persian (PHTD). CRNN and Vision Transformer-based HTR-VT models are trained on the union of multiple related Arabic-script datasets to mitigate the data scarcity and are evaluated on individual target languages. Both architec-tures benefit from cross-language training under low-resource conditions. CRNN remains more effective under extremely limited target-language data, whereas the benefits of cross-language training for HTR-VT be-come less consistent as larger amounts of target-language data become available. On Persian (PHTD), joint training achieves a Character Error Rate (CER) of 9.99 %, surpassing previously reported results despite not using the full available training data. On an additional Urdu dataset (UNHD), joint training reduces CER from 17.20% to 14.45%. 
+
+Keywords: handwritten text recognition · Arabic · Urdu · Persian ·
+
+joint training · CRNN · HTR-VT 
+
+## 1 Introduction 
+
+Handwritten text recognition (HTR) for Arabic-script languages remains chal-lenging, particularly under low-resource conditions where only limited labeled data is available. While modern neural recognizers achieve strong performance when trained on large-scale datasets, their accuracy degrades substantially when labeled training data is scarce [1]. This challenge is especially pronounced for Arabic-script HTR due to its cursive connectivity, position-dependent letter  
+
+> arXiv:2605.02089v2 [cs.CV] 17 Jun 2026 2S. Al-azzawi et al.
+
+forms, and the high visual similarity among many characters that differ only by dots or diacritics [2]. In contrast to Latin-script HTR, where large standardized datasets exist across multiple languages, Arabic-script HTR resources remain comparatively limited and fragmented, particularly for multilingual scenarios, which are mostly available at the line level. Many Arabic-script datasets focus on character- or word-level recognition, with fewer large-scale line-level resources available. Pub-licly available page-level datasets are currently available primarily for Arabic, while Urdu and Persian resources remain more limited. For this reason, we focus on line-level recognition in this work. Furthermore, Arabic script datasets are imbalanced in terms of scale (some are just a few hundred pages, some just a few hundred lines), raising concerns about the feasibility of training robust HTR systems under such constraints. In practice, while labeled data in the target language remains scarce, additional handwritten material from related scripts can already be accessible through pub-lic digitized archives or web-collected document repositories. This motivates the investigation in this paper: when only a limited number of annotated pages or labeled lines are available for a target language, can data from related Arabic-script languages be leveraged to improve recognition under low-resource conditions? Contributions. This paper makes the following contributions: 
+
+– We present a controlled line-level joint training study across three distinct Arabic-script languages (Arabic, Urdu, and Persian) under strictly low-resource regimes ( K ∈ { 100 , 500 , 1000 } labeled lines), comparing both CRNN-and Vision Transformer-based HTR-VT architectures. 
+
+– We demonstrate that cross-lingual joint training consistently improves recog-nition accuracy when the target dataset is limited in size and textual diver-sity across Arabic, Urdu, and Persian datasets. 
+
+– We provide a detailed character-level analysis showing that transfer gains are structured: improvements concentrate on characters shared across scripts, while language-specific characters remain largely stable. 
+
+– We provide a dataset-level statistical analysis of textual diversity and dupli-cation, showing how these factors influence cross-lingual transfer. 
+
+– We show that CRNN models remain more data-efficient under low-resource conditions and consistently benefit from cross-language training, whereas HTR-VT benefits mainly under limited target-language data and sometimes exhibits degraded performance as more target-language data becomes avail-able. All code, splits, training configurations, and evaluation protocols are released to ensure full reproducibility. 1
+
+The remainder of this paper is organized as follows. Section 2 summarizes structural overlap in Arabic-script languages. Section 3 reviews related work.   
+
+> 1GitHub link will be publicly released upon acceptance Cross-Lingual Learning within Arabic Script for Low-Resource HTR 3
+
+Section 4 describes the problem formulation, training paradigms, and recogni-tion architectures. Section 5 details the datasets, implementation settings, and evaluation protocol. Section 6 presents quantitative results and character-level analyses. Finally, Section 7 concludes the paper and outlines future directions. 
+
+## 2 Background: Structural Overlap in Arabic Scripts 
+
+Languages that use the Arabic-script share a largely common writing system based on a common set of base letterforms that are often distinguished only by dots or diacritic marks [3]. As shown in Fig. 1, the character inventories of Arabic, Persian and Urdu overlap extensively: 30 characters are shared across all three scripts, while Urdu introduces nine additional characters, Persian introduces none, and Arabic contains a single unique character. Seven are shared across pairs of languages. Beyond character-level similarity, these languages are histor-ically interconnected, with substantial lexical borrowing and recurring character sequences across corpora [2, 4]. This structural and statistical overlap suggests that cross-lingual transfer may be particularly effective within the Arabic writing system. 
+
+Fig. 1: Overlap between the character inventories of Arabic, Persian, and Urdu derived from the datasets used in this study. The diagram shows shared and language-specific (unique) characters in the experimental setting. 
+
+## 3 Related Work 
+
+Prior work in multilingual printed OCR shows that LSTM-based models trained on mixtures of Latin-script languages can generalize across languages within the same script family [5]. More recently, task grouping strategies for multilingual 4 S. Al-azzawi et al. 
+
+OCR demonstrated that automatically grouping structurally related languages outperforms fully shared or fully separated architectures [6]. Within Arabic-script recognition, prior work has explored transfer in several related but distinct directions. Cross-script learning for synthetic and printed Arabic-like scripts has been explored using MDLSTM architectures [3], showing that recognition benefits when scripts share visual similarity. However, these experiments were conducted on printed and synthetic data rather than real handwritten documents. Low-resource printed Ottoman recognition has been addressed through synthetic data generation and transfer learning from Ara-bic [7]. Although additional data mitigates scarcity, cross-language transfer be-tween Arabic and Ottoman leads to performance degradation, and the analysis remains limited to printed OCR rather than handwritten HTR. Transfer between modern Arabic handwriting and historical Ottoman manu-scripts has been studied using transformer-based models [8]. These experiments consider a single auxiliarytarget pair and do not isolate the effects of script relatedness under strictly low-resource supervision. Several works combine printed and handwritten Urdu datasets to improve handwritten recognition performance [9, 10]. These approaches increase training data volume within the same language but do not examine cross-lingual transfer across distinct Arabic-script languages. Bilingual training across disjoint scripts, such as Urdu and English, has also been explored to assess architectural robustness in higher-resource settings [11]. However, this work does not systematically analyze low-resource cross-language behavior within the Arabic-script family. Despite these efforts, prior studies focus on printed text, high-resource regimes, or single auxiliarytarget pairs, often within the same language. A controlled line-level study across multiple closely related Arabic-script languages under strictly low-resource handwritten conditions remains largely unexplored. This motivates our study. 
+
+## 4 Methodology 
+
+We exploit the character overlap across Arabic, Urdu, and Persian to evaluate how cross-lingual learning improves recognition when target data is limited. 
+
+4.1 Problem Setting 
+
+We consider line-level HTR for Arabic-script languages under low-resource con-ditions. Let Dt denote a target-language dataset and let the auxiliary dataset 
+
+Da = ∪Jj=1 D(j) 
+
+> a
+
+, where D(j) 
+
+> a
+
+denotes the j-th language specific auxiliary dataset and J is the number of auxiliary datasets used. Each dataset consists of pairs 
+
+(xi, y i), where xi is a text-line image and yi its corresponding character-sequence transcription. To evaluate low-resource scenarios, we restrict the labeled training subset of the target dataset Dt to K ∈ { 100 , 500 , 1000 } randomly sampled line Cross-Lingual Learning within Arabic Script for Low-Resource HTR 5
+
+images. Auxiliary datasets are used with their complete training splits. Evalua-tion is performed independently for each target language on its full official test split using Character Error Rate (CER) as the metric. 
+
+4.2 Recognition model 
+
+We use two recognition architectures: a CNN-based CRNN model [12] and the transformer-based HTR-VT model [13], both adapted for Arabic-script HTR. The CRNN consists of a convolutional feature extractor with residual convo-lutional blocks followed by three stacked bidirectional LSTM layers and is trained using the CTC objective. Sequential features are obtained through column-wise pooling over convolutional feature maps. HTR-VT combines a CNN feature extractor with a 4-layer Vision Trans-former (ViT) encoder [14] using 6 attention heads and predicts character se-quences using CTC loss. Following [13], span masking, the Sharpness-Aware Minimization (SAM) optimizer, and exponential moving average (EMA) are used during training. 
+
+4.3 Training Paradigms 
+
+In our study, three Arabic-script languages are considered: Arabic, Urdu, and Persian, for which we use the datasets: KHATT, NUST-UHWR, and PHTD. Each language’s dataset serves as the target dataset Dt in turn, while the re-maining datasets are treated as auxiliary data Da. In this paper, we use the term joint training to denote training a single HTR model on the combined training data of multiple languages. Experiments are conducted independently for each target language under identical low-resource conditions. 
+
+Single-Script Training. In the single-script setting (Fig. 2a), a separate recog-nizer is trained for each target language using only data from its corresponding dataset. The model is trained and evaluated exclusively on a single script (Ara-bic, Urdu, or Persian), without exposure to any auxiliary languages (i.e., J = 0 ). To simulate low-resource conditions, we restrict the labeled training subset of the target dataset D(K) 
+
+> t
+
+to K ∈ { 100 , 500 , 1000 } randomly sampled line images. 
+
+Multi-Script Joint Training. In the multi-script setting (Fig. 2b), the model is trained jointly on the union of the limited target subset D(K) 
+
+> t
+
+and the auxiliary data Da = ∪Jj=1 D(j) 
+
+> a
+
+, where J ≥ 1 from other languages. Formally, 
+
+Dtrain = D(K) 
+
+> t
+
+∪ D a. (1) Auxiliary datasets are used in full while the target remains limited to K labeled lines. This mirrors a practical case where related language datasets are available, but annotated target-language data is limited. We consider two variants of multi-script training. In the Multi-script ( J = 1 
+
+aux.) setting, the target dataset is combined with a single auxiliary dataset. In 6 S. Al-azzawi et al. 
+
+Fig. 2: Comparison of training paradigms. (a) Single-script ( J = 0 ): training and evaluation are performed using only the target dataset D(K) 
+
+> t
+
+with K labeled samples. (b) Multi-script ( J = 1 or J = 2 ): training is performed on the union of the limited target subset D(K) 
+
+> t
+
+and auxiliary datasets D(j) 
+
+> a
+
+(merged as Da), while evaluation is conducted on each target language separately. the Multi-script ( J = 2 aux.) setting, the target dataset is combined with both remaining Arabic-script datasets. Both variants involve cross-lingual transfer; they differ only in the amount of auxiliary data included during training. 
+
+## 5 Experiment 
+
+This section describes the datasets, experimental protocol, and evaluation set-tings used to assess the proposed cross-lingual joint training strategy. 
+
+5.1 Datasets 
+
+We use four publicly available Arabic-script HTR datasets in our experiments: KHATT (Arabic), NUST-UHWR (Urdu), PHTD (Persian), and UNHD (Urdu). The first three serve as the primary datasets for controlled cross-lingual evalua-tion, while UNHD is used as an additional low-resource benchmark to confirm our results. A representative example from each dataset is shown in Fig. 3 and details are described next. 
+
+KHATT (Arabic). KHATT [15] is a widely used benchmark for modern Arabic HTR. It consists of paragraph images written by 1,000 writers from 18 countries. Cross-Lingual Learning within Arabic Script for Low-Resource HTR 7
+
+Fig. 3: Examples of handwritten text lines from the four datasets used in this study. From top to bottom: KHATT (Arabic), NUST-UHWR (Urdu), PHTD (Persian), and UNHD (Urdu). Following common practice, we use the subset of 2,000 unique paragraphs, which are segmented into line images using the official split. The resulting partition contains 4,837 training lines, 938 validation lines, and 967 test lines. 
+
+NUST-UHWR (Urdu). NUST-UHWR [11] is a large-scale unconstrained Urdu handwritten text dataset written in Nastaliq style. It contains 10,605 text lines produced by nearly 1,000 contributors and spans multiple topical domains to ensure linguistic diversity. The official split includes 8,483 training lines, 1,061 validation lines, and 1,061 test lines. 
+
+PHTD (Persian). The Persian Handwritten Text Dataset (PHTD) [16] consists of 140 handwritten pages written by 47 writers. As the original release provides page-level images with pixel-level masks but no predefined line images or official splits, we use the line-level version and leakage-free page-based partition intro-duced in [17]. The resulting split contains 1,473 training lines, 160 validation lines, and 155 test lines. Due to its comparatively small size and limited textual diversity, PHTD is particularly suitable for evaluating transfer behavior under low-resource conditions. 
+
+UNHD (Urdu, Additional Low-Resource Dataset). UNHD (Urdu Nastaliq Hand-written Dataset) [18] contains 10,000 handwritten text lines collected from 500 writers. However, only approximately 600 training lines are unique in terms of textual content, resulting in limited effective lexical diversity. To evaluate the robustness of cross-lingual transfer in an additional low-resource setting, we use the publicly available unique subset. 
+
+5.2 Training and Implementation Details 
+
+All experiments were implemented in PyTorch and conducted on NVIDIA A100-SXM4-40GB GPUs. Line images were converted to grayscale and size-normalized using adaptive resizing while preserving the aspect ratio. For the CRNN model, images were adaptively resized to a target height of 110 pixels with a maximum width of 8 S. Al-azzawi et al. 
+
+1450 pixels, where the target dimensions were derived from the average text-line dimensions across the primary datasets. For HTR-VT, we follow [13] and resize images to a fixed input size of 512 × 64 while preserving aspect ratio. To account for the right-to-left nature of Arabic-script writing while maintaining left-to-right feature extraction, ground-truth transcriptions were reversed dur-ing training. A consistent augmentation pipeline was applied across datasets and training paradigms, including affine transformations, elastic distortion, morpho-logical operations, brightness and contrast adjustment, and gamma correction. Both models were trained using batch size 16. The CRNN model was opti-mized using AdamW with an initial learning rate of 5 × 10 −4 and a multi-step learning-rate schedule. HTR-VT was trained following [13] using AdamW with SAM, EMA, cosine warmup scheduling, span masking and a maximum learning rate of 5 × 10 −4. For each K, all models were trained for a fixed number of op-timization steps, and the checkpoint with the best validation CER was selected for evaluation. 
+
+5.3 Experimental Protocol 
+
+For each target language and each low-resource regime K ∈ { 100 , 500 , 1000 }, we evaluate the following setups: 1. Single-script training ( J = 0 ): the model is trained using only K labeled lines from the target dataset. 2. Multi-script ( J = 1 aux.): the model is trained using K target lines together with one auxiliary Arabic-script dataset. 3. Multi-script ( J = 2 aux.): the model is trained using K target lines together with both remaining Arabic-script datasets. For each value of K, target subsets were sampled using fixed random seeds to ensure consistent comparisons across single- and multi-script settings. A unified character vocabulary was constructed as the union of characters across all involved languages. Recognition performance is evaluated using CER, computed as the normalized Levenshtein distance between the predicted and ground-truth character sequences, where lower CER indicates higher transcription accuracy. Across all configurations, the recognition architectures, optimization settings, augmentation strategy, and decoding procedure are kept consistent, and results are obtained using CTC greedy decoding without any external language model or lexicon. 
+
+## 6 Results 
+
+This section reports the evaluation of cross-lingual learning under low-resource conditions. We begin by analyzing single-script behavior, then examine the effect of one- and two-auxiliary joint training across Arabic, Urdu, and Per-sian datasets. We further evaluate generalization to an additional low-resource dataset and present a character-level analysis to interpret the transfer behavior. Cross-Lingual Learning within Arabic Script for Low-Resource HTR 9
+
+Table 1: Cross-lingual training results under low-resource ( K=100 , 500 , 1000 ). The table compares CRNN and HTR-VT under single-script (J=0 ), one-auxiliary ( J=1 ), and two-auxiliary ( J=2 ) settings. Best results for each dataset and K are shown in bold.                                                                                                          
+
+> Dataset Setting Auxiliary K=100 K=500 K=1000
+> (language) CER (%) CER (%) CER (%) CRNN HTR-VT CRNN HTR-VT CRNN HTR-VT KHATT
+> (Arabic)
+> Single-script ( J= 0 )–25.95 45.46 16.68 26.03 13.25 20.21 Multi-script ( J= 1 )NUST-UHWR 20.09 26.70 13.53 19.96 11.62 19.31 Multi-script ( J= 1 )PHTD 23.94 33.95 15.22 22.92 12.86 19.17 Multi-script ( J= 2 )NUST-UHWR + PHTD 19.77 25.05 13.78 18.15 11.80 15.59 NUST-UHWR
+> (Urdu)
+> Single-script ( J= 0 )–26.98 52.70 13.15 25.31 10.30 19.03 Multi-script ( J= 1 )KHATT 18.37 27.35 11.37 18.68 9.48 15.61 Multi-script ( J= 1 )PHTD 21.68 33.40 12.36 22.18 10.05 17.69 Multi-script ( J= 2 )KHATT + PHTD 17.82 25.23 11.24 16.66 9.36 13.81 PHTD
+> (Persian)
+> Single-script ( J= 0 )–32.50 56.75 15.81 34.04 13.40 26.78 Multi-script ( J= 1 )KHATT 23.05 32.18 13.79 22.66 11.44 18.41 Multi-script ( J= 1 )NUST-UHWR 18.59 31.27 12.01 23.01 10.20 18.26 Multi-script ( J= 2 ) KHATT + NUST-UHWR 18.27 25.45 12.31 19.52 9.99 16.10
+
+Table 2: Full dataset training ( J = 0 and J = 2 ) with J = 0 comparison to other published methods. 
+
+Dataset Data Method J=0 J=2 
+
+(language) Quantity (K) CER (%) CER (%) KHATT  
+
+> (Arabic)
+
+K = 4500 Our CRNN 8.80 8.59 Our HTR-VT 8.89 10.66 CRNN[17], TrOCR[19], SRF[20] 8.45, 15.40, 14.10 –NUST-UHWR  
+
+> (Urdu)
+
+K = 8500 Our CRNN 5.48 5.50 Our HTR-VT 6.09 7.68 Conv- transformer[9], CRNN[17] 6.40, 6.66 –PHTD  
+
+> (Persian)
+
+K = 1500 Our CRNN 12.90 9.70 Our HTR-VT 24.70 14.80 CRNN[17] 11.30 –
+
+Table 1 summarizes recognition performance under single-script and multi-script training across three low-resource regimes ( K ∈ { 100 , 500 , 1000 }). We also evaluated a balanced sampling strategy in which each batch contained an equal number of target and auxiliary samples. This approach did not yield consistent improvements over proportional mixing; therefore, all reported results use the standard mixed training procedure. Table 2 shows results when trained on the full target datasets for J = 0 and J = 2 , as well as comparing to results from the literature. 
+
+6.1 Single-Script Training 
+
+We first analyze single-script training, where the model is trained using only target-language data ( J = 0 ). As shown in Table 1, recognition performance improves as the number of labeled samples increases for both HTR models. 10 S. Al-azzawi et al. 
+
+Table 3: Line-level and lexical diversity statistics for the datasets at K ∈{100 , 500 , 1000 }. Duplication ratio is 1 − unique lines /K. Mean max Jaccard measures the maximum word overlap between lines. Word TTR is the typetoken ratio. Higher duplication and Jaccard, and lower TTR, indicate lower diversity.                                                 
+
+> Dataset Unique lines Duplication ratio Mean max Jaccard Unique words Word TTR KHATT_K100 100 0.000 0.097 859 0.735 KHATT_K500 500 0.000 0.109 3478 0.591 KHATT_K1000 1000 0.000 0.108 6103 0.520 NUST_K100 100 0.000 0.138 688 0.597 NUST_K500 500 0.002 0.155 2356 0.410 NUST_K1000 995 0.005 0.158 3850 0.335 PHTD_K100 93 0.070 0.665 382 0.266 PHTD_K500 389 0.222 0.782 641 0.084 PHTD_K1000 663 0.337 0.776 738 0.049
+
+Across all datasets, the CRNN model performs better than the transformer-based HTR-VT under low-resource settings, with the largest gap observed under the most constrained target-data condition ( K=100 ), where the transformer model struggles to learn stable and effective recognition. Although HTR-VT improves considerably as the number of labeled samples increases, a noticeable gap compared to CRNN remains across all datasets. For both architectures, CER decreases steadily from K = 100 to K = 1000 , indicating that additional target data improves recognition performance. As shown in Table 2, this trend generally continues when the full dataset is used in training. Under full data, the performance of both architectures is comparable to or better than previously reported results from the literature. Performance differences across datasets remain noticeable, particularly at low 
+
+K. To better understand these differences, we analyze the statistical properties of the sampled subsets in Table 3. As shown in Table 3, PHTD exhibits substan-tially lower lexical diversity (e.g., only 738 unique words at K = 1000 ), which contributes to its consistently higher CER across both CRNN and HTR-VT compared to KHATT and NUST-UHWR. 
+
+6.2 Multi-script: One-Auxiliary Training 
+
+We next examine the setting in which the target dataset is combined with a single auxiliary Arabic-script dataset ( J = 1 ). Across all three languages, one-auxiliary joint training consistently improves recognition compared to single-script training for both CRNN and HTR-VT. These results suggest that auxiliary dataset size alone does not fully explain the observed gains. Although PHTD is the smallest dataset, it still contributes measurable improvements when used as an auxiliary. Conversely, as a target Cross-Lingual Learning within Arabic Script for Low-Resource HTR 11 
+
+dataset, PHTD receives the largest relative benefit from cross-lingual training. As reflected in Table 3, the PHTD training split contains substantial textual overlap and near-duplicate content, reducing its effective diversity. This limited intra-dataset variability likely contributes to the strong gains observed under both one- and two-auxiliary training settings. These observations suggest that transfer effectiveness depends not only on dataset size, but also on the degree of internal diversity within the target dataset. Cross-lingual training appears most beneficial when the target corpus is con-strained in size and limited in diversity. Overall, CRNN consistently outperforms HTR-VT across low-resource set-tings, particularly under the most limited target-data condition ( K=100 ), where the transformer model struggles to learn effective recognition from very limited training data. 
+
+6.3 Multi-script: Two-Auxiliary Joint Training 
+
+We next extend the analysis to the setting in which the target dataset is com-bined with both remaining Arabic-script datasets ( J = 2 ). Across all three languages, two-auxiliary joint training consistently improves performance over single-script training for both CRNN and HTR-VT. For the CRNN model, KHATT CER decreases from 25.95% to 19.77% at 
+
+K = 100 , and from 16.68% to 13.78% at K = 500 . Gains remain positive at 
+
+K = 1000 . For NUST-UHWR, two-auxiliary training reduces CER from 26.98% to 17.82% at K = 100 , and from 13.15% to 11.24% at K = 500 . At K = 1000 ,improvements remain but are smaller. For PHTD, consistent gains are observed across all regimes: CER decreases from 32.50% to 18.27% at K = 100 , from 15.81% to 12.31% at K = 500 , and from 13.40% to 9.99% at K = 1000 .Similar patterns are observed for HTR-VT, although the transformer model remains less data-efficient than CRNN under limited target-language data. Two-auxiliary joint training consistently improves recognition compared to single-script training across all datasets when training data is scarce. For datasets with larger amounts of training data (KHATT and NUST-UHWR), the transformer exhibits better performance with the homogeneous data of a single source ( J =0). As shown in Table 2, the benefits of cross-language joint training become less consistent for HTR-VT in full-data settings, whereas CRNN continues to exhibit stable gains or comparable performance. Overall, the use of two auxiliary datasets provides the most consistent im-provements under low-resource conditions, particularly when the target dataset is both small and limited in diversity. When trained on the full target datasets, Table 2, the performance gap be-tween CRNN and HTR-VT becomes much smaller for KHATT and NUST-UHWR. For example, on NUST-UHWR the HTR-VT achieves a CER of 6.09% compared to 5.48% for CRNN, while on KHATT the HTR-VT reaches 8.89% compared to 8.80% for CRNN. In contrast, a larger gap remains on PHTD, whose full training set contains only approximately 1500 lines, where HTR-VT achieves 24.70% CER compared to 12.90% for CRNN, but with the assistance 12 S. Al-azzawi et al. 
+
+Fig. 4: Qualitative comparison between single-script and multi-script CRNN training at K=1000 . For each dataset (KHATT, NUST-UHWR, PHTD), two representative examples are shown. Predictions from single-script training ( J =0) are contrasted with those from multi-script ( J = 2 ) joint training. Characters incorrectly predicted are highlighted in red. of KHATT and NUST-UHWR ( J = 2 ) PHTD can achieve 9.7% CER with the CRNN and 14.80% under HTR-VT. While we and [17] both use a CRNN, minor differences between our CRNN results and [17] are likely attributable to differences in preprocessing and resiz-ing strategy. In our experiments, a unified resizing configuration derived from the average dimensions across all three datasets was used to enable consistent cross-lingual training, whereas [17] used dataset-specific resizing configurations computed separately for each dataset. Fig. 4 provides representative examples demonstrating how cross-lingual joint training reduces character-level errors compared to single-script training with the CRNN. 
+
+6.4 Evaluation on an additional low-resource dataset 
+
+The results on KHATT, NUST-UHWR, and PHTD demonstrate that cross-lingual joint training consistently improves recognition under low-resource set-tings. To assess whether this effect generalizes beyond the primary experimental setting, we evaluate the proposed method on another Urdu handwritten dataset, UNHD. Since the previous experiments showed that CRNN models remain more effective under extremely limited target-data conditions, we focus this additional evaluation on the CRNN architecture. UNHD contains 10,000 text lines written by 500 writers; however, only ap-proximately 600 training lines are unique in terms of semantic content, resulting Cross-Lingual Learning within Arabic Script for Low-Resource HTR 13 
+
+Table 4: CRNN performance on the UNHD ( K=600 , full target set).                             
+
+> Dataset (language) Setting Auxiliary CER (%) UNHD [18]
+> (Urdu)
+> Single-script ( J= 0 )–17.20 ±0.02 Multi-script ( J= 1 )KHATT (Arabic) 14.79 ±0.07 Multi-script ( J= 1 )PHTD (Persian) 15.60 ±0.32 Multi-script ( J= 2 )KHATT (Arabic) + PHTD (Persian) 14.45 ±0.13
+
+in limited effective lexical diversity [21]. This characteristic makes UNHD partic-ularly suitable for evaluating robustness under real-world low-resource conditions and low diversity. We follow the same experimental protocol used for the primary datasets. The CRNN architecture, optimization strategy, preprocessing, and hyperparam-eters remain unchanged. For multi-script training, we use Arabic (KHATT) and Persian (PHTD) as auxiliary datasets. We exclude NUST-UHWR to avoid same-language transfer, ensuring that any improvements arise strictly from cross-lingual information. As shown in Table 4, the single-script achieves performance comparable to the previously reported state-of-the-art obtained using the full UNHD training set. In contrast, multi-script joint training reduces CER from 17.20% to 14.45%, achieving a substantial improvement over the single-script baseline under the same setting without introducing additional Urdu data. Overall, cross-lingual joint training yields consistent improvements across datasets, with the largest gains observed when the target data is both limited in size and low in diversity. 
+
+6.5 Character-Level Transfer: Shared vs. Unique Characters 
+
+To quantify character-level transfer for the CRNN model, we compare single-script training ( J = 0 ) and multi-script training with two auxiliary datasets (J = 2 ) at K = 1000 . For each character c, we compute 
+
+∆CER (c) = CER Multi (c) − CER Single (c). (2) Negative values of ∆CER (c) indicate desirable reduced recognition error under multi-script joint training. 
+
+Quantifying character-level transfer. We quantify transfer effects by computing the mean per-character recognition error change separately for characters shared across scripts and language-specific (unique) characters (Table 5). On Urdu (NUST-UHWR), shared characters improve on average ( −1.97 pp), whereas unique characters degrade ( +2 .02 pp), with a statistically significant difference (Welch p = 0 .0021 ). This indicates that cross-lingual joint training primarily benefits shared characters, while language-specific symbols may experience mild interference under joint optimization. For Arabic (KHATT), improvements are modest and similar for shared and unique characters, though only one unique character is present. For Persian 14 S. Al-azzawi et al. 
+
+Table 5: CRNN Mean per-character recognition error change (∆CER =
+
+CER Multi − CER Single , in percentage points). Negative values indicate im-provement (reducing CER) under multi-script training. p-value computed using Welchs t-test comparing shared and unique characters.                        
+
+> Dataset nshared nunique Mean ∆(shared) Mean ∆(unique) p
+> KHATT 35 1−0.94 −0.79 –NUST-UHWR 33 7−1.97 +2 .02 0.002 PHTD 38 0−11 .21 ––
+
+Fig. 5: CRNN Character-level transfer for shared characters. Each point repre-sents a character; the x-axis shows its frequency (log scale), and the y-axis shows 
+
+∆CER (c) = CER Multi (c)−CER Single (c) (negative values indicate improvement). The solid line shows the mean ∆CER across frequency ranges. (PHTD), which contains no unique characters under our grouping, substantial improvements are observed across shared symbols ( −11 .21 pp on average), con-sistent with its smaller dataset size and stronger reliance on auxiliary data. 
+
+Shared characters. Fig. 5 further analyzes shared characters by plotting ∆CER 
+
+as a function of single-script character frequency (log scale). Each point corre-sponds to one shared character. Across KHATT, NUST-UHWR, and PHTD, 
+
+larger gains are observed for low-frequency shared characters , with improvements decreasing as target-side frequency increases. This indicates that auxiliary data primarily compensates for target-side data sparsity rather than uniformly improving all characters. Table 6 lists the shared characters exhibiting the largest error reductions for each dataset (single-script count ≥ 15 ). Improvements are most pronounced for rare and visually confusable letters (e.g., ﺙ, ﺽ, ﻅ), while high-frequency char-acters show comparatively minor changes, suggesting a diminishing-return effect for already well-learned symbols. 
+
+Unique characters. As shown in Fig.1, not all letters are shared across languages. we examine characters unique to each dataset, which receive no additional ex-posure from auxiliary languages. Results are shown in Table 7. For KHATT, the single unique character ( ﺇ) remains largely stable ( −0.79 pp). In NUST-UHWR, most Urdu-specific characters exhibit small fluctuations (typically within ±0.8Cross-Lingual Learning within Arabic Script for Low-Resource HTR 15 
+
+Table 6: Shared characters with the largest CER reductions under cross-lingual training. Negative ∆CER values indicate improvement. 
+
+(a) KHATT (Arabic)                             
+
+> Train CER (%) Char Single Multi Single Multi ∆(pp)
+> ﺙ399 891 30.5 22.5 −8.1
+> ﺽ326 1365 24.5 17.4 −7.1
+> ﻅ134 872 22.2 15.4 −6.8
+> ﺥ398 3705 26.8 21.5 −5.3
+> ﺝ730 7492 16.5 13.5 −2.9
+
+(b) NUST-UHWR (Urdu)                             
+
+> Train CER (%) Char Single Multi Single Multi ∆(pp)
+> ﺫ50 2054 47.3 27.3 −20 .0
+> ﺙ53 1901 58.1 39.5 −18 .6
+> ﺀ34 849 34.5 17.2 −17 .2
+> ﻁ174 3173 11.0 7.5 −3.5
+> ﺽ97 1857 20.5 17.2 −3.3
+
+(c) PHTD (Persian)                             
+
+> Train CER (%) Char Single Multi Single Multi ∆(pp)
+> ﺀ16 1043 50.0 0.0 −50 .0
+> ﺫ28 2544 71.4 35.7 −35 .7
+> ﻅ69 1324 60.0 26.7 −33 .3
+> ﻍ135 2109 70.8 41.7 −29 .2
+> ﺝ711 9904 40.5 11.9 −28 .6
+
+Table 7: Unique characters under cross-lingual training. ∆CER values close to zero indicate limited transfer to language-specific symbols. 
+
+(a) KHATT (Arabic)             
+
+> Train CER (%) Char Single Multi Single Multi ∆CER (pp)
+> ﺇ412 412 12.07 11.29 -0.79
+
+(b) NUST-UHWR (Urdu)                                                
+
+> Train CER (%) Char Single Multi Single Multi ∆CER (pp)
+> ۂ22100.00 100.00 0.00
+> ﮪ570 570 9.99 10.13 0.15
+> ے2097 2097 1.64 2.25 0.61
+> ہ2214 2214 9.01 9.76 0.75
+> ں980 980 3.74 4.52 0.78
+> ڈ117 117 13.18 17.05 3.88
+> ٹ303 303 21.75 25.71 3.95
+> ڑ114 114 17.74 21.77 4.03
+
+pp), consistent with training variability. However, a subset ( ٹ, ڈ, ڑ) shows mod-erate increases in error ( +3 to +4 pp), indicating competitive capacity allocation in favor of shared characters during joint training. Overall, these findings show that cross-lingual joint training primarily bene-fits shared characters, particularly those that are infrequent in the target data, while unique (language-specific) characters remain stable or may experience lim-ited degradation. These results support the hypothesis that transfer effects are primarily driven by script-level overlap rather than uniform improvements across the character inventory. 
+
+## 7 Conclusion 
+
+This work presents a controlled line-level evaluation of cross-lingual joint training for Arabic-script HTR under low-resource conditions, using both CRNN and transformer-based HTR-VT models trained across Arabic, Urdu, and Persian datasets while systematically restricting the amount of labeled target-language data. We isolate and quantify the effect of cross-lingual transfer. Across datasets, joint training consistently improves recognition over single-script baselines when labeled target data is limited. 16 S. Al-azzawi et al. 
+
+While both HTR architectures benefit from cross-lingual joint training un-der low-resource conditions, the experiments show that CRNN models remain more data-efficient under extremely low-resource conditions. In contrast, the transformer-based HTR-VT model struggles to learn effective recognition at very small target sizes ( K=100 ), although its performance improves as more target-language data becomes available and it benefits most from cross-lingual training under low-resource conditions. The largest gains are observed for datasets with limited size and diversity, particularly PHTD and UNHD. Character-level analysis further shows that im-provements are concentrated on shared characters, especially infrequent ones, while language-specific characters receive limited benefit. These findings indicate that transfer effectiveness depends on both character overlap and target-dataset diversity. Overall, these results demonstrate that related Arabic-script datasets can ef-fectively complement one another under data scarcity. Cross-lingual joint train-ing provides a practical strategy for improving recognition performance without collecting additional target-language annotations or relying on large-scale pre-training. Furthermore, under single-script training ( J=0 ) using the full target datasets, the performance gap between CRNN and HTR-VT becomes relatively small for KHATT and NUST-UHWR, suggesting that transformer-based ar-chitectures become increasingly competitive as sufficient target-language data becomes available. suggesting that transformer-based architectures can become increasingly com-petitive as sufficient target-language data becomes available. Future work will investigate how transfer dynamics evolve as target-language data increases and will compare joint training with alternative paradigms such as pretraining followed by fine-tuning. 
+
+## References 
+
+> 1. C. Luo, Y. Zhu, L. Jin, Y. Wang, Learn to augment: Joint data augmentation and network optimization for text recognition, in: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2020, pp. 13746–13755. 2. M. Salaheldin Kasem, M. Mahmoud, H.-S. Kang, Advancements and challenges in Arabic optical character recognition: A comprehensive survey, ACM Computing Surveys 58 (4) (2025) 1–37. 3. R. Ahmad, S. Naz, M. Z. Afzal, S. F. Rashid, M. Liwicki, A. Dengel, The impact of visual similarities of Arabic-like scripts regarding learning in an OCR system, in: 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR), Vol. 7, IEEE, 2017, pp. 15–19. 4. F. Nemati, C. Westbury, G. Hollis, H. Haghbin, The Persian lexicon project: min-imized orthographic neighbourhood effects in a dense language, Journal of Psy-cholinguistic Research 51 (5) (2022) 957–979. 5. A. Ul-Hasan, T. M. Breuel, Can we build language-independent OCR using LSTM networks?, in: Proceedings of the 4th International Workshop on Multilingual OCR, 2013, pp. 1–5.
+
+Cross-Lingual Learning within Arabic Script for Low-Resource HTR 17 6. J. Huang, K. J. Liang, R. Kovvuri, T. Hassner, Task grouping for multilingual text recognition, in: European Conference on Computer Vision, Springer, 2022, pp. 297–313. 7. E. F. Bilgin Tasdemir, Printed Ottoman text recognition using synthetic data and data augmentation, International Journal on Document Analysis and Recognition (IJDAR) 26 (3) (2023) 273–287. 8. P. Broadwell, U. Patel, M. Tekgürler, Multilingual handwritten text recognition (HTR) models for large-scale processing of archival documents in low-resourced Arabic-script languages, Available at SSRN 5190984 (2025). 9. N. Riaz, H. Arbab, A. Maqsood, K. Nasir, A. Ul-Hasan, F. Shafait, Conv-transformer architecture for unconstrained off-line Urdu handwriting recognition, International Journal on Document Analysis and Recognition (IJDAR) 25 (4) (2022) 373–384. 10. A. Hamza, S. Ren, U. Saeed, ET-Network: A novel efficient transformer deep learn-ing model for automated Urdu handwritten text recognition, PLOS One 19 (5) (2024) e0302590. 11. N. ul Sehr Zia, M. F. Naeem, S. M. K. Raza, M. M. Khan, A. Ul-Hasan, F. Shafait, A convolutional recursive deep architecture for unconstrained Urdu handwriting recognition, Neural Computing and Applications 34 (2) (2022) 1635–1648. 12. G. Retsinas, G. Sfikas, B. Gatos, C. Nikou, Best practices for a handwritten text recognition system, in: International Workshop on Document Analysis Systems, Springer, 2022, pp. 247–259. 13. Y. Li, D. Chen, T. Tang, X. Shen, Htr-vt: Handwritten text recognition with vision transformer, Pattern Recognition 158 (2025) 110967. 14. A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai, T. Unterthiner, M. Dehghani, M. Minderer, G. Heigold, S. Gelly, et al., An image is worth 16x16 words: Transformers for image recognition at scale, in: International Conference on Learning Representations. 15. S. A. Mahmoud, I. Ahmad, W. G. Al-Khatib, M. Alshayeb, M. T. Parvez, V. Märgner, G. A. Fink, KHATT: An open Arabic offline handwritten text database, Pattern Recognition 47 (3) (2014) 1096–1112. 16. A. Alaei, U. Pal, P. Nagabhushan, Dataset and ground truth for handwritten text in four different scripts, International Journal of Pattern Recognition and Artificial Intelligence 26 (04) (2012) 1253001. 17. S. Al-azzawi, E. Barney, M. Liwicki, A human-in-the-loop Label error detection framework applied to Arabic-script HTR datasets, arXiv preprint arXiv:2601.16713 (2026). 18. S. B. Ahmed, S. Naz, S. Swati, M. I. Razzak, Handwritten Urdu character recogni-tion using one-dimensional BLSTM classifier, Neural Computing and Applications 31 (4) (2019) 1143–1151. 19. A. Chan, A. Mijar, M. Saeed, C.-W. Wong, A. Khater, HATFormer: historic hand-written Arabic text recognition with transformers, arXiv preprint arXiv:2410.02179 (2024). 20. M. Saeed, A. Chan, A. Mijar, G. Habchi, C. Younes, C.-W. Wong, A. Khater, Muharaf: Manuscripts of handwritten Arabic dataset for cursive text recognition, Advances in Neural Information Processing Systems 37 (2024) 58525–58538. 21. T. Anjum, N. Khan, Caltext: Contextual attention localization for offline hand-written text, Neural Processing Letters 55 (6) (2023) 7227–7257.
