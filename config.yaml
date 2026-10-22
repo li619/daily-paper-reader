@@ -25,3 +25,59 @@ subscriptions:
     stage: A
     diff_threshold_pct: 15
   keyword_recall_mode: or
+  intent_profiles:
+    - tag: hf
+      description: 离线文本行手写识别入门、技术路线与可复现基线
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: connectionist temporal classification
+          keyword_cn: 连接时序分类
+          query: connectionist temporal classification
+        - keyword: handwriting recognition survey
+          keyword_cn: 手写识别综述
+          query: handwriting recognition survey
+        - keyword: handwritten text line recognition
+          keyword_cn: 手写文本行识别
+          query: handwritten text line recognition
+        - keyword: offline handwriting recognition
+          keyword_cn: 离线手写识别
+          query: offline handwriting recognition
+        - keyword: handwritten text recognition
+          keyword_cn: 手写文本识别
+          query: handwritten text recognition
+      intent_queries:
+        - query: >-
+            Transformer and pretrained encoder decoder approaches to handwritten text recognition, including HTR VT and
+            TrOCR.
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: CTC based handwritten text recognition methods evaluated on IAM, READ, or LAM.
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: Surveys and foundational methods for offline handwritten text recognition at the text line level.
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-10-22T10:00:47.655Z'
+source_backends:
+  arxiv:
+    papers_table: arxiv_papers
+    use_vector_rpc: true
+    vector_rpc: match_arxiv_papers
+    vector_rpc_exact: match_arxiv_papers_exact
+    use_bm25_rpc: true
+    bm25_rpc: match_arxiv_papers_bm25
+    sync_table: arxiv_sync_status
+    sync_success_value: success
+    schema: public
+    kind: supabase
+    enabled: true
+    url: https://lyucdwgefyfbmaiopjbk.supabase.co
+    anon_key: sb_publishable_lX-oi64Uxyd7SIVv3_w2Uw_MTOojeKq
