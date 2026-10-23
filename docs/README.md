@@ -54,11 +54,11 @@
     <strong class="dpr-home-dashboard-count">共 2 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
-    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>2 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>2</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-23 08:00:18 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-23 08:54:10 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,7 +69,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-10-14 至 10-23 共速读 2 篇论文，内容涵盖古籍重写本破译与端到端语音识别模型对比。其中，利用生成式文本建模与语言引导视觉注意力来解读重写本的方向，以及比较时间同步端到端 ASR 模型搜索空间复杂度和效率的方向，均值得关注。普通读者可优先浏览这两篇论文的摘要与实验结论，再决定是否深入阅读。</p>
+<p>本期速读两篇 6.0 分论文，分别关注生成式文本建模与语言引导视觉注意力在重写本识读中的应用，以及时间同步端到端 ASR 模型的搜索空间复杂度和效率比较。值得关注的方向是：语言引导视觉注意力用于古籍识读，以及端到端语音识别在效率与复杂度上的取舍。建议普通读者先看这两篇的摘要与实验结论，判断其与自己的场景是否匹配，再决定是否深入阅读全文。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
