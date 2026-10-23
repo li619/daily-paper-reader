@@ -1,0 +1,41 @@
+{
+  "date": "20261014-20261023",
+  "date_label": "2026-10-14 ~ 2026-10-23",
+  "generated_at": "2026-10-23 08:00:18 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.24060v1",
+      "route": "20261014-20261023/2610.24060v1-generative-text-modelling-and-language-guided-visual-attention-for-deciphering-palimpsests",
+      "title": "Generative Text Modelling and Language-Guided Visual Attention for Deciphering Palimpsests",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "htr"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向重写本的注意力手写文本识别网络",
+      "first_seen_at": "2026-10-23 08:00:18 UTC",
+      "updated_at": "2026-10-23 08:00:18 UTC"
+    },
+    {
+      "paper_id": "2610.31259v1",
+      "route": "20261014-20261023/2610.31259v1-a-systematic-comparison-of-search-space-complexity-and-efficiency-for-time-synchronous-end-to-end-asr-models",
+      "title": "A Systematic Comparison of Search Space Complexity and Efficiency for Time-Synchronous End-to-End ASR Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "htr"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "对CTC搜索空间复杂度的比较分析",
+      "first_seen_at": "2026-10-23 08:00:18 UTC",
+      "updated_at": "2026-10-23 08:00:18 UTC"
+    }
+  ]
+}
